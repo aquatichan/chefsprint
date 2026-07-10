@@ -103,7 +103,7 @@ export default function CookbookCard({
           <button
             onClick={(e) => {
               e.stopPropagation();
-              window.open(apiUrl(book.pdfUrl), "_blank");
+              window.open(apiUrl(book.pdfUrl!), "_blank");
             }}
             className="rounded-full border border-line px-2.5 py-1 hover:border-accent"
           >
