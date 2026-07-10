@@ -1,0 +1,95 @@
+@import "tailwindcss";
+
+/* Doodle Cream design tokens — mirror engine/app/templates/themes/doodle-cream.css */
+@theme {
+  --color-cream: #faf6ef;
+  --color-paper: #fffdf8;
+  --color-ink: #3b342e;
+  --color-ink-soft: #6f655c;
+  --color-accent: #c56b4a;
+  --color-accent-strong: #b4553a;
+  --color-sage: #7c8a5a;
+  --color-line: #e7decf;
+
+  --font-sans: var(--ff-body), system-ui, sans-serif;
+  --font-display: var(--ff-display), Georgia, serif;
+  --font-script: var(--ff-hand), "Segoe Script", cursive;
+}
+
+html {
+  background: var(--color-cream);
+}
+body {
+  background: var(--color-cream);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+/* Hand-drawn wobbly underline accent (terracotta) */
+.doodle-underline::after {
+  content: "";
+  display: block;
+  height: 12px;
+  width: 240px;
+  margin-top: 2px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 12'><path d='M2 6 Q17 9 32 6 T62 6 T92 6 T122 6 T152 6 T182 6 T212 6 T238 6' fill='none' stroke='%23C56B4A' stroke-width='2.4' stroke-linecap='round'/></svg>");
+  background-position: left;
+  background-size: 240px 12px;
+  background-repeat: no-repeat;
+}
+
+/* Sketchy sage divider */
+.doodle-rule {
+  height: 16px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 16'><path d='M2 6 Q17 3 32 6 T62 6 T92 6 T122 6 T152 6 T182 6 T212 6 T238 6' fill='none' stroke='%237C8A5A' stroke-width='2.4' stroke-linecap='round'/></svg>");
+  background-position: center;
+  background-size: 220px 16px;
+  background-repeat: no-repeat;
+}
+
+/* Soft skeuomorphic paper card */
+.paper-card {
+  background: var(--color-paper);
+  border: 1.5px solid var(--color-line);
+  border-radius: 16px;
+  box-shadow: 4px 5px 0 rgba(59, 52, 46, 0.1);
+}
+
+@keyframes pop-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-pop { animation: pop-in 0.25s ease-out both; }
+
+/* --- Hero logo: rotating golden sun rays + halo around the settled emblem --- */
+@keyframes ray-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.hero-rays {
+  border-radius: 50%;
+  background: repeating-conic-gradient(
+    from 0deg,
+    rgba(238, 166, 50, 0.38) 0deg 9deg,
+    rgba(238, 166, 50, 0) 9deg 30deg
+  );
+  /* fade rays out toward the rim so they read as soft sunshine, not a pinwheel */
+  -webkit-mask-image: radial-gradient(circle, black 22%, rgba(0, 0, 0, 0.55) 50%, transparent 78%);
+  mask-image: radial-gradient(circle, black 22%, rgba(0, 0, 0, 0.55) 50%, transparent 78%);
+  animation: ray-spin 26s linear infinite;
+}
+.hero-halo {
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(243, 186, 76, 0.5) 0%, rgba(243, 186, 76, 0.18) 45%, transparent 70%);
+}
+@keyframes settle-bounce {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.18); }
+  70% { transform: scale(0.96); }
+  100% { transform: scale(1); }
+}
+.hero-settle { display: inline-block; animation: settle-bounce 0.5s ease-out both; }
+@media (prefers-reduced-motion: reduce) {
+  .hero-rays { animation: none; }
+  .hero-settle { animation: none; }
+}

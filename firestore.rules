@@ -1,0 +1,56 @@
+rules_version = '2';
+
+// Chefsprint rules. The engine writes cookbook docs and manages AI credits via the
+// Admin SDK (bypasses these rules). Browsers own profiles, stars/bookmarks, and
+// comments — with aiCredits/plan explicitly shielded from client writes.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // --- Public chef profiles -------------------------------------------------
+    match /users/{uid} {
+      allow read: if true; // profiles + user search are public
+      allow create: if signedIn() && request.auth.uid == uid
+        && !request.resource.data.keys().hasAny(['aiCredits', 'plan']);
+      allow update: if signedIn() && request.auth.uid == uid
+        && !request.resource.data.diff(resource.data).affectedKeys()
+            .hasAny(['aiCredits', 'plan']);
+
+      // Stars double as bookmarks under the starring user's own doc.
+      match /bookmarks/{cookbookId} {
+        allow read, write: if signedIn() && request.auth.uid == uid;
+      }
+    }
+
+    // --- Cookbooks (written only by the engine) --------------------------------
+    match /cookbooks/{cookbookId} {
+      allow read: if resource.data.public == true
+        || (signedIn() && resource.data.uid == request.auth.uid);
+      allow write: if false;
+
+      match /stars/{starUid} {
+        allow read: if true;
+        allow create, delete: if signedIn() && request.auth.uid == starUid;
+      }
+
+      match /comments/{commentId} {
+        allow read: if true;
+        allow create: if signedIn()
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0
+          && request.resource.data.text.size() <= 1000;
+        allow delete: if signedIn() && resource.data.uid == request.auth.uid;
+      }
+    }
+
+    // --- Job progress mirror ----------------------------------------------------
+    match /jobs/{jobId} {
+      allow read: if signedIn();
+      allow write: if false;
+    }
+  }
+}

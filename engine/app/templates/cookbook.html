@@ -1,0 +1,123 @@
+{#- Chefsprint cookbook — rendered to HTML preview and (via Paged.js + Chromium) PDF. -#}
+{%- macro icon_serves() -%}
+<svg viewBox="0 0 24 24" width="15" height="15"><circle cx="12" cy="12" r="8" fill="none" stroke="#C56B4A" stroke-width="1.6"/><circle cx="12" cy="12" r="3.4" fill="none" stroke="#C56B4A" stroke-width="1.4"/></svg>
+{%- endmacro -%}
+{%- macro icon_time() -%}
+<svg viewBox="0 0 24 24" width="15" height="15"><circle cx="12" cy="12" r="8.5" fill="none" stroke="#C56B4A" stroke-width="1.6"/><path d="M12 7 v5 l3 2" fill="none" stroke="#C56B4A" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+{%- endmacro -%}
+{#- Translucent hand-drawn ornaments hugging the dish photo's corners. -#}
+{%- macro orn_flower() -%}
+<svg class="orn orn-flower" viewBox="0 0 40 40" width="34" height="34"><g fill="none" stroke="#C56B4A" stroke-width="2" stroke-linecap="round"><circle cx="20" cy="20" r="3.6" fill="#F2B44B" stroke="none"/><ellipse cx="20" cy="11" rx="3.4" ry="6"/><ellipse cx="20" cy="11" rx="3.4" ry="6" transform="rotate(72 20 20)"/><ellipse cx="20" cy="11" rx="3.4" ry="6" transform="rotate(144 20 20)"/><ellipse cx="20" cy="11" rx="3.4" ry="6" transform="rotate(216 20 20)"/><ellipse cx="20" cy="11" rx="3.4" ry="6" transform="rotate(288 20 20)"/></g></svg>
+{%- endmacro -%}
+{%- macro orn_utensils() -%}
+<svg class="orn orn-utensils" viewBox="0 0 40 40" width="32" height="32"><g fill="none" stroke="#7C8A5A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5 v9 M8 5 v6 M16 5 v6 M8 11 q4 3.5 8 0 M12 14 v20"/><path d="M28 5 c-4.5 1 -4.5 10 0 11 v18 M28 5 c4.5 1 4.5 10 0 11"/></g></svg>
+{%- endmacro -%}
+{%- macro recipe_card(r) -%}
+<section class="recipe" id="{{ r.id }}">
+  <header class="recipe-head">
+    <div class="head-row">
+      <div class="head-text">
+        <span class="cat-chip">{{ r.category }}</span>
+        <h1 class="recipe-title">{{ r.title }}</h1>
+        <div class="underline"></div>
+        <div class="meta">
+          <span>{{ icon_serves() }} serves {{ r.servings }}</span>
+          {% if r.total_time %}<span>{{ icon_time() }} {{ r.total_time }} min</span>{% endif %}
+        </div>
+      </div>
+      {% if r.image_data %}
+      <div class="dish-art">
+        <img src="{{ r.image_data }}" alt="{{ r.title }}">
+        {{ orn_flower() }}
+        {{ orn_utensils() }}
+      </div>
+      {% endif %}
+    </div>
+  </header>
+  <div class="recipe-body">
+    <aside class="ingredients">
+      <h2>Ingredients</h2>
+      <ul>
+        {% for ing in r.ingredients %}
+        <li>{% if ing.amount_display %}<span class="qty">{{ ing.amount_display }}</span> {% endif %}{{ ing.text_display }}</li>
+        {% endfor %}
+      </ul>
+    </aside>
+    <div class="steps">
+      <h2>Method</h2>
+      <ol>
+        {% for step in r.instructions %}
+        <li>{{ step }}</li>
+        {% endfor %}
+      </ol>
+    </div>
+  </div>
+  {% if r.notes %}
+  <div class="notes">
+    <h3>Chef&rsquo;s Notes</h3>
+    {% for n in r.notes %}<p>{{ n }}</p>{% endfor %}
+  </div>
+  {% endif %}
+</section>
+{%- endmacro -%}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ cookbook.title }}</title>
+  <style>{{ theme_css | safe }}</style>
+</head>
+<body>
+
+  <!-- COVER ------------------------------------------------------------------>
+  <section class="cover">
+    <div class="cover-inner">
+      <div class="cover-emblem">🍔</div>
+      <h1 class="cover-title">{{ cookbook.title }}</h1>
+      {% if cookbook.subtitle %}<p class="cover-sub">{{ cookbook.subtitle }}</p>{% endif %}
+      <div class="doodle-rule"></div>
+      <p class="cover-tag">Made by Chefsprint</p>
+      <p class="cover-meta">{{ date_str }} &middot; {{ cookbook.recipes | length }} recipe{{ 's' if cookbook.recipes | length != 1 }}</p>
+    </div>
+  </section>
+
+  <!-- CONTENTS ---------------------------------------------------------------->
+  <section class="frontmatter">
+    <h1 class="section-title">Contents</h1>
+    {% for cat, recipes in grouped.items() %}
+    <div class="toc-group">
+      <h3>{{ cat }}</h3>
+      {% for r in recipes %}
+      <a class="toc-entry" href="#{{ r.id }}"><span class="t">{{ r.title }}</span><span class="dots"></span></a>
+      {% endfor %}
+    </div>
+    {% endfor %}
+  </section>
+
+  <!-- RECIPES ------------------------------------------------------------------>
+  {% for cat, recipes in grouped.items() %}
+    {% for r in recipes %}{{ recipe_card(r) }}{% endfor %}
+  {% endfor %}
+
+  <!-- INDEX (page order; sources & adaptations live here) ----------------------->
+  <section class="recipe" id="__index">
+    <h1 class="section-title">Recipe Index</h1>
+    <div class="doodle-rule"></div>
+    <div class="index-entries">
+      {% for r in index_entries %}
+      <div class="index-item">
+        <a class="index-entry" href="#{{ r.id }}"><span class="t">{{ r.title }}</span><span class="dots"></span></a>
+        {% if r.source_host %}
+        <div class="index-src">Adapted from <a href="{{ r.source_url }}">{{ r.source_host }}</a></div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    <p class="colophon">Made with ❤️ with Chefsprint</p>
+  </section>
+
+  <script>window.PagedConfig = { auto: true, after: () => { window.__pagedReady = true; } };</script>
+  {% if pagedjs_js %}<script>{{ pagedjs_js | safe }}</script>{% endif %}
+</body>
+</html>

@@ -1,0 +1,13 @@
+rules_version = '2';
+
+// The engine uploads via the Admin SDK and hands clients time-limited signed URLs,
+// so no public read is needed. Cookbook files are scoped to their owner; all client
+// writes are denied.
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /cookbooks/{uid}/{file=**} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow write: if false;
+    }
+  }
+}

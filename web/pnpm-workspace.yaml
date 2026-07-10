@@ -1,0 +1,8 @@
+# Optional native/codegen build scripts are disabled for deterministic installs.
+# None are required for the app or for Firebase Auth. If you later enable features
+# that need them (e.g. sharp for next/image optimization), run `pnpm approve-builds`.
+allowBuilds:
+  '@firebase/util': false
+  protobufjs: false
+  sharp: false
+  unrs-resolver: false

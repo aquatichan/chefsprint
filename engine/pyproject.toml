@@ -1,0 +1,43 @@
+[project]
+name = "chefsprint-engine"
+version = "0.1.0"
+description = "Chefsprint — recipe request → styled cookbook PDF engine"
+requires-python = ">=3.11"
+dependencies = [
+    "recipe-scrapers>=15",
+    "ingredient-parser-nlp>=2",
+    "pint>=0.24",
+    "jinja2>=3.1",
+    "pydantic>=2",
+    "requests>=2.31",
+    "beautifulsoup4>=4.12",
+    "playwright>=1.44",
+    "httpx>=0.27",
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.29",
+    "python-dotenv>=1",
+    "certifi",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+# Firebase Admin (auth verify, Firestore, Storage). Optional so the engine/CLI
+# run without it; the API enables cloud features only when it's installed + configured.
+firebase = ["firebase-admin>=6"]
+
+[project.scripts]
+chefsprint = "app.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*"]
+
+[tool.setuptools.package-data]
+app = ["templates/**/*", "static/**/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
