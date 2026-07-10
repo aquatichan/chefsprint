@@ -13,7 +13,7 @@ WORKDIR /app
 COPY pyproject.toml ./
 COPY app ./app
 RUN pip install --upgrade pip \
-    && pip install . \
+    && pip install ".[firebase]" \
     && python -m playwright install --with-deps chromium \
     && python -c "import ssl, certifi, nltk; ssl._create_default_https_context=lambda *a,**k: ssl.create_default_context(cafile=certifi.where()); nltk.download('averaged_perceptron_tagger_eng'); nltk.download('punkt_tab')"
 
