@@ -16,7 +16,6 @@ from __future__ import annotations
 import logging
 import os
 import sys
-from datetime import timedelta
 from functools import lru_cache
 
 from . import config as _config  # noqa: F401  — loads .env before we read os.environ
@@ -92,7 +91,14 @@ def verify_token(id_token: str) -> dict | None:
 
 
 def upload_bytes(path: str, data: bytes, content_type: str) -> str | None:
-    """Upload to Cloud Storage and return a signed URL (or None if disabled)."""
+    """Upload to Cloud Storage and return a public URL (or None if disabled).
+
+    Cookbooks are meant to be shared/downloaded, so objects are made public
+    rather than signed: signed URLs need a private key to sign with, which
+    Cloud Run's Application Default Credentials (a token, not a key) can't
+    do without an extra IAM Credentials API round-trip. Public + no expiry
+    also means links in Firestore docs never go stale.
+    """
     if not is_enabled():
         return None
     try:
@@ -100,7 +106,8 @@ def upload_bytes(path: str, data: bytes, content_type: str) -> str | None:
 
         blob = storage.bucket().blob(path)
         blob.upload_from_string(data, content_type=content_type)
-        return blob.generate_signed_url(expiration=timedelta(days=7))
+        blob.make_public()
+        return blob.public_url
     except Exception:
         log.exception("Cloud Storage upload failed for %s — falling back to local disk", path)
         return None
