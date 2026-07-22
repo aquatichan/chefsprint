@@ -20,7 +20,7 @@ export interface CreditPack {
 
 export const CREDIT_PACKS: CreditPack[] = [
   { id: "small", name: "Small", credits: 10, price: 5 },
-  { id: "medium", name: "Medium", credits: 30, price: 12, badge: "Better value" },
+  { id: "medium", name: "Medium", credits: 30, price: 12, badge: "Most popular" },
   { id: "large", name: "Large", credits: 60, price: 20, badge: "Best value" },
 ];
 
@@ -30,7 +30,7 @@ export function cashAppLink(pack: CreditPack): string {
 }
 
 export const PRO_FEATURES = [
-  "AI request understanding — plain-English variants & servings",
+  "AI request understanding - plain-English variants & servings",
   "Allergen & diet personalization",
   "AI dish photos for every recipe",
   "Each credit = one AI-assisted cookbook generation",

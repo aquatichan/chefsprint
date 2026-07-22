@@ -1,6 +1,11 @@
 @import "tailwindcss";
 
-/* Doodle Cream design tokens — mirror engine/app/templates/themes/doodle-cream.css */
+/* ============================================================================
+   Chefsprint — "Doodle Kitchen" design system
+   Cartoony hand-drawn recipe-binder look: taped index cards, sticker badges,
+   wobbly ink borders, and playful kitchen motion. Core tokens mirror
+   engine/app/templates/themes/doodle-cream.css; the rest amplifies them.
+   ============================================================================ */
 @theme {
   --color-cream: #faf6ef;
   --color-paper: #fffdf8;
@@ -10,6 +15,11 @@
   --color-accent-strong: #b4553a;
   --color-sage: #7c8a5a;
   --color-line: #e7decf;
+
+  /* Kitchen supporting hues — used sparingly so terracotta still owns the page */
+  --color-butter: #f0b429; /* golden: stars, tape, highlights */
+  --color-berry: #b0476b; /* jam: badges, accents */
+  --color-sky: #6a9bb0; /* cool balance, rare */
 
   --font-sans: var(--ff-body), system-ui, sans-serif;
   --font-display: var(--ff-display), Georgia, serif;
@@ -23,7 +33,13 @@ body {
   background: var(--color-cream);
   color: var(--color-ink);
   font-family: var(--font-sans);
+  /* Subtle paper grain + a faint dotted "cork board" so surfaces feel tactile */
+  background-image:
+    radial-gradient(rgba(59, 52, 46, 0.035) 1px, transparent 1px);
+  background-size: 22px 22px;
 }
+
+/* ---------------------------------------------------------------- underlines */
 
 /* Hand-drawn wobbly underline accent (terracotta) */
 .doodle-underline::after {
@@ -47,7 +63,9 @@ body {
   background-repeat: no-repeat;
 }
 
-/* Soft skeuomorphic paper card */
+/* ------------------------------------------------------------------- cards */
+
+/* Soft skeuomorphic paper card (kept for back-compat; slightly chunkier now) */
 .paper-card {
   background: var(--color-paper);
   border: 1.5px solid var(--color-line);
@@ -55,11 +73,133 @@ body {
   box-shadow: 4px 5px 0 rgba(59, 52, 46, 0.1);
 }
 
-@keyframes pop-in {
-  from { opacity: 0; transform: translateY(4px); }
-  to { opacity: 1; transform: translateY(0); }
+/* Hand-drawn recipe card: an inked outline with asymmetric "sketched" corner
+   radii and a hard cartoon drop shadow. Avoids SVG-in-data-URI border rects
+   (which seam at the edges) — a real border can't leave a gap. */
+.doodle-card {
+  position: relative;
+  background: var(--color-paper);
+  border: 2px solid var(--color-ink);
+  /* Uneven radii read as hand-drawn rather than machined */
+  border-radius: 20px 18px 22px 16px;
+  box-shadow: 5px 6px 0 rgba(59, 52, 46, 0.16);
+  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.18s ease;
 }
-.animate-pop { animation: pop-in 0.25s ease-out both; }
+.doodle-card:hover {
+  transform: translateY(-3px) rotate(-0.6deg);
+  box-shadow: 7px 9px 0 rgba(59, 52, 46, 0.2);
+}
+
+/* Washi-tape strip — decorative, place absolutely on card corners */
+.tape {
+  position: absolute;
+  width: 74px;
+  height: 26px;
+  background: repeating-linear-gradient(
+    45deg,
+    rgba(240, 180, 41, 0.55) 0 7px,
+    rgba(240, 180, 41, 0.32) 7px 14px
+  );
+  border-left: 1px dashed rgba(59, 52, 46, 0.18);
+  border-right: 1px dashed rgba(59, 52, 46, 0.18);
+  box-shadow: 0 1px 2px rgba(59, 52, 46, 0.12);
+  pointer-events: none;
+}
+.tape-sage {
+  background: repeating-linear-gradient(
+    45deg,
+    rgba(124, 138, 90, 0.5) 0 7px,
+    rgba(124, 138, 90, 0.28) 7px 14px
+  );
+}
+
+/* Rotated sticker badge */
+.sticker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.15rem 0.7rem;
+  border-radius: 999px;
+  font-family: var(--font-script);
+  font-weight: 700;
+  line-height: 1.1;
+  color: #fff;
+  box-shadow: 2px 2px 0 rgba(59, 52, 46, 0.18);
+  transform: rotate(-2.5deg);
+}
+
+/* Chunky doodle button — pressable, casts a hard cartoon shadow */
+.btn-doodle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  border-radius: 999px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--color-accent);
+  box-shadow: 3px 3px 0 rgba(59, 52, 46, 0.22);
+  transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.15s ease;
+}
+.btn-doodle:hover {
+  background: var(--color-accent-strong);
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0 rgba(59, 52, 46, 0.24);
+}
+.btn-doodle:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 rgba(59, 52, 46, 0.22);
+}
+.btn-doodle:disabled {
+  opacity: 0.55;
+  box-shadow: 2px 2px 0 rgba(59, 52, 46, 0.15);
+  transform: none;
+}
+
+/* ------------------------------------------------------------- animations */
+
+@keyframes pop-in {
+  from { opacity: 0; transform: translateY(6px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.animate-pop { animation: pop-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+
+/* Gentle continuous wobble for stickers/emoji */
+@keyframes jiggle {
+  0%, 100% { transform: rotate(-3deg); }
+  50% { transform: rotate(3deg); }
+}
+.jiggle { animation: jiggle 2.6s ease-in-out infinite; transform-origin: center; }
+
+/* Slow bob for floating kitchen doodles */
+@keyframes bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+.bob { animation: bob 3.4s ease-in-out infinite; }
+
+/* Rising steam wisp (used on hero pot / cooking states) */
+@keyframes steam {
+  0% { opacity: 0; transform: translateY(4px) scale(0.9); }
+  35% { opacity: 0.7; }
+  100% { opacity: 0; transform: translateY(-22px) scale(1.25); }
+}
+.steam { animation: steam 2.4s ease-out infinite; }
+
+/* Hover-jiggle helper for interactive doodles */
+.hover-jiggle:hover { animation: jiggle 0.5s ease-in-out; }
+
+/* Draw-on wobbly underline (clip reveal) for headings on load */
+@keyframes draw-underline {
+  from { clip-path: inset(0 100% 0 0); }
+  to { clip-path: inset(0 0 0 0); }
+}
+.draw-underline::after { animation: draw-underline 0.7s ease-out 0.2s both; }
+
+/* Staggered entrance utility (pair with inline animation-delay) */
+.stagger { opacity: 0; animation: pop-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
 
 /* --- Hero logo: rotating golden sun rays + halo around the settled emblem --- */
 @keyframes ray-spin {
@@ -73,7 +213,6 @@ body {
     rgba(238, 166, 50, 0.38) 0deg 9deg,
     rgba(238, 166, 50, 0) 9deg 30deg
   );
-  /* fade rays out toward the rim so they read as soft sunshine, not a pinwheel */
   -webkit-mask-image: radial-gradient(circle, black 22%, rgba(0, 0, 0, 0.55) 50%, transparent 78%);
   mask-image: radial-gradient(circle, black 22%, rgba(0, 0, 0, 0.55) 50%, transparent 78%);
   animation: ray-spin 26s linear infinite;
@@ -89,7 +228,11 @@ body {
   100% { transform: scale(1); }
 }
 .hero-settle { display: inline-block; animation: settle-bounce 0.5s ease-out both; }
+
 @media (prefers-reduced-motion: reduce) {
-  .hero-rays { animation: none; }
-  .hero-settle { animation: none; }
+  .hero-rays, .hero-settle, .jiggle, .bob, .steam,
+  .hover-jiggle:hover, .draw-underline::after, .stagger, .animate-pop {
+    animation: none;
+  }
+  .doodle-card:hover { transform: none; }
 }

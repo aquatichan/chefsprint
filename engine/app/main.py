@@ -76,8 +76,8 @@ def _describe(book: Cookbook) -> str:
     """Short overview shown on dashboard/profile cards."""
     titles = [r.title for r in book.recipes]
     cats = sorted({r.category for r in book.recipes})
-    head = ", ".join(titles[:3]) + ("…" if len(titles) > 3 else "")
-    return f"{len(titles)} recipe{'s' if len(titles) != 1 else ''} · {' & '.join(cats)} — {head}"
+    head = ", ".join(titles[:3]) + ("..." if len(titles) > 3 else "")
+    return f"{len(titles)} recipe{'s' if len(titles) != 1 else ''} . {' & '.join(cats)} - {head}"
 
 
 def _persist(job_id: str, uid: str | None, book: Cookbook, html: str, pdf: bytes,
@@ -149,7 +149,7 @@ async def create_job(job: JobRequest, uid: str | None = Depends(get_uid)):
             raise HTTPException(
                 status_code=402,
                 detail="You've used your free AI generations. Turn off AI "
-                       "features for this cookbook, or upgrade your plan.",
+                       "features for this cookbook, or buy more credits.",
             )
         credit_spent = remaining >= 0  # pro users (-1) never spend credits
 
@@ -214,7 +214,7 @@ async def grant_credits(body: GrantCreditsRequest, uid: str | None = Depends(get
 
     Admin-only: the caller's own uid must have isAdmin set on their user doc
     (settable only via the Firebase console / Admin SDK, never from the client
-    — see firestore.rules).
+    - see firestore.rules).
     """
     if not fb.is_enabled():
         raise HTTPException(status_code=404, detail="admin actions require Firebase")

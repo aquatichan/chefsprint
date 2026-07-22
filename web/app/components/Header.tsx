@@ -7,20 +7,28 @@ export default function Header() {
   const { user, enabled, signIn, signOut } = useAuth();
 
   return (
-    <header className="border-b border-line/70 bg-cream/80 backdrop-blur sticky top-0 z-10">
+    <header className="border-b-2 border-dashed border-line bg-cream/85 backdrop-blur sticky top-0 z-20">
       <div className="mx-auto max-w-5xl px-5 h-16 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2 text-ink">
-          <span className="text-2xl">🍔</span>
-          <span className="font-display text-xl font-semibold">Chefsprint</span>
+        <Link href="/" className="group flex items-center gap-2 text-ink">
+          <span className="text-2xl hover-jiggle">🍔</span>
+          <span className="font-display text-xl font-semibold group-hover:text-accent transition-colors">
+            Chefsprint
+          </span>
         </Link>
-        <nav className="flex items-center gap-4 text-sm">
+        <nav className="flex items-center gap-1 sm:gap-3 text-sm">
           {enabled && (
             <>
-              <Link href="/search" className="text-ink-soft hover:text-ink">
+              <Link
+                href="/search"
+                className="rounded-full px-2.5 py-1.5 text-ink-soft hover:bg-sage/10 hover:text-sage transition-colors"
+              >
                 Explore
               </Link>
               {user && (
-                <Link href="/dashboard" className="text-ink-soft hover:text-ink">
+                <Link
+                  href="/dashboard"
+                  className="rounded-full px-2.5 py-1.5 text-ink-soft hover:bg-sage/10 hover:text-sage transition-colors"
+                >
                   Dashboard
                 </Link>
               )}
@@ -28,30 +36,34 @@ export default function Header() {
           )}
           <Link
             href="/new"
-            className="rounded-full bg-accent px-4 py-2 font-semibold text-white shadow-[2px_2px_0_rgba(59,52,46,0.15)] hover:bg-accent-strong transition-colors"
+            className="btn-doodle px-4 py-2 text-sm"
           >
-            New cookbook
+            + New cookbook
           </Link>
           {enabled &&
             (user ? (
               <div className="flex items-center gap-2">
-                <Link href={`/u/${user.uid}`} title="My profile">
+                <Link
+                  href={`/u/${user.uid}`}
+                  title="My profile"
+                  className="transition-transform hover:-rotate-6"
+                >
                   {user.photoURL ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={user.photoURL}
                       alt="me"
-                      className="h-8 w-8 rounded-full border border-line object-cover"
+                      className="h-9 w-9 rounded-full border-2 border-line object-cover shadow-[1px_1px_0_rgba(59,52,46,0.15)]"
                     />
                   ) : (
-                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-sage/20">
+                    <span className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-line bg-sage/20 shadow-[1px_1px_0_rgba(59,52,46,0.15)]">
                       👩‍🍳
                     </span>
                   )}
                 </Link>
                 <button
                   onClick={() => signOut()}
-                  className="text-ink-soft hover:text-ink"
+                  className="hidden sm:block rounded-full px-2.5 py-1.5 text-ink-soft hover:bg-accent/10 hover:text-accent transition-colors"
                   title={user.email ?? undefined}
                 >
                   Sign out
@@ -60,7 +72,7 @@ export default function Header() {
             ) : (
               <button
                 onClick={() => signIn()}
-                className="text-ink-soft hover:text-ink"
+                className="rounded-full px-3 py-1.5 text-ink-soft hover:bg-accent/10 hover:text-accent transition-colors"
               >
                 Sign in
               </button>

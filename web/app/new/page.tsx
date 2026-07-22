@@ -25,14 +25,14 @@ function ProgressLine({ ev }: { ev: JobEvent }) {
         <span className="text-accent">✓</span>
         <span>
           {ev.title}
-          {ev.host && <span className="text-ink-soft"> · {ev.host}</span>}
+          {ev.host && <span className="text-ink-soft"> . {ev.host}</span>}
         </span>
       </div>
     ) : (
       <div className="flex items-start gap-2 text-ink-soft">
         <span className="text-accent-strong">✗</span>
         <span>
-          {ev.request} — {ev.message}
+          {ev.request} - {ev.message}
         </span>
       </div>
     );
@@ -50,7 +50,7 @@ function ProgressLine({ ev }: { ev: JobEvent }) {
   if (ev.stage === "art") {
     return (
       <div className="animate-pop flex items-start gap-2 text-ink">
-        <span className="text-accent">{ev.ok ? "✓" : "–"}</span>
+        <span className="text-accent">{ev.ok ? "✓" : "-"}</span>
         <span>{ev.title}</span>
       </div>
     );
@@ -58,12 +58,12 @@ function ProgressLine({ ev }: { ev: JobEvent }) {
   if (ev.stage === "build") {
     return (
       <div className="text-sm text-ink-soft">
-        Assembling {ev.count} recipe{ev.count === 1 ? "" : "s"}…
+        Assembling {ev.count} recipe{ev.count === 1 ? "" : "s"}...
       </div>
     );
   }
   if (ev.stage === "render") {
-    return <div className="text-sm text-ink-soft">Rendering your cookbook…</div>;
+    return <div className="text-sm text-ink-soft">Rendering your cookbook...</div>;
   }
   return null;
 }
@@ -176,46 +176,53 @@ function NewCookbookInner() {
 
   return (
     <div className="mx-auto max-w-5xl px-5 py-10">
-      <h1 className="font-display text-4xl font-bold text-ink doodle-underline inline-block">
-        {remixId ? "Remix cookbook" : "New cookbook"}
-      </h1>
-      <p className="mt-2 text-ink-soft">
-        One request per line. Add servings, diets, or allergies in plain English.
+      <div className="flex items-center gap-3">
+        <span className="text-4xl bob">{remixId ? "🔄" : "🧑‍🍳"}</span>
+        <h1 className="font-display text-4xl font-bold text-ink doodle-underline draw-underline inline-block">
+          {remixId ? "Remix cookbook" : "New cookbook"}
+        </h1>
+      </div>
+      <p className="mt-3 font-script text-xl text-sage -rotate-1">
+        One request per line — servings, diets, or allergies, all in plain English.
       </p>
 
       <div className="mt-8 grid gap-8 lg:grid-cols-2">
         {/* Request form */}
-        <form onSubmit={onSubmit} className="paper-card p-6 h-fit">
+        <form onSubmit={onSubmit} className="doodle-card relative p-6 h-fit">
+          <span className="tape -top-3 left-10 -rotate-3" aria-hidden />
           <label className="block font-script text-2xl text-sage">
-            Your recipe requests
+            📝 Your recipe requests
           </label>
           <textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
             rows={7}
             disabled={running}
-            className="mt-2 w-full resize-y rounded-xl border border-line bg-cream/60 p-3 text-ink outline-none focus:border-accent disabled:opacity-60"
+            className="mt-2 w-full resize-y rounded-xl border-2 border-line bg-cream/60 p-3 text-ink outline-none transition-colors focus:border-accent focus:bg-paper disabled:opacity-60"
           />
+          <div className="mt-1 text-right font-script text-lg text-ink-soft">
+            {requests.length} dish{requests.length === 1 ? "" : "es"} on the list
+          </div>
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             disabled={running}
             placeholder="Cookbook title (optional)"
-            className="mt-3 w-full rounded-xl border border-line bg-cream/60 p-3 text-ink outline-none focus:border-accent disabled:opacity-60"
+            className="mt-2 w-full rounded-xl border-2 border-line bg-cream/60 p-3 text-ink outline-none transition-colors focus:border-accent focus:bg-paper disabled:opacity-60"
           />
 
           {/* AI toggle */}
-          <label className="mt-4 flex items-center gap-3 text-sm text-ink">
+          <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-xl border-2 border-line bg-butter/5 p-3 text-sm text-ink transition-colors hover:border-butter/60">
             <input
               type="checkbox"
               checked={useAi}
               onChange={(e) => setUseAi(e.target.checked)}
               disabled={running}
-              className="h-4 w-4 accent-[#c56b4a]"
+              className="mt-0.5 h-5 w-5 accent-[#c56b4a]"
             />
             <span>
-              <b>AI features</b> — request understanding, allergen &amp; diet
-              personalization, dish photos
+              <b>✨ AI features</b> &mdash; request understanding, allergen
+              &amp; diet personalization, dish photos
             </span>
           </label>
           {user && credits !== null && (
@@ -225,21 +232,21 @@ function NewCookbookInner() {
               }`}
             >
               {credits < 0 ? (
-                <>Pro plan — unlimited AI generations ✨</>
+                <>Pro plan - unlimited AI generations ✨</>
               ) : credits === 0 ? (
                 <>
-                  0 free AI generations left —{" "}
+                  0 free AI generations left -{" "}
                   <button
                     type="button"
                     onClick={() => setPaywallOpen(true)}
                     className="font-semibold underline decoration-wavy underline-offset-2 hover:text-accent"
                   >
-                    upgrade to Pro
+                    buy more credits
                   </button>
                 </>
               ) : (
                 <>
-                  {credits} of {FREE_AI_GENERATIONS} free AI generation
+                  {credits} free AI generation
                   {credits === 1 ? "" : "s"} left
                 </>
               )}
@@ -282,24 +289,32 @@ function NewCookbookInner() {
           <button
             type="submit"
             disabled={running || (!requests.length && !needsSignIn)}
-            className="mt-4 w-full rounded-full bg-accent px-6 py-3 text-lg font-semibold text-white shadow-[3px_3px_0_rgba(59,52,46,0.18)] hover:bg-accent-strong transition-colors disabled:opacity-60"
+            className="btn-doodle mt-5 w-full px-6 py-3.5 text-lg"
           >
-            {running
-              ? "Cooking…"
-              : needsSignIn
-                ? "Sign in to cook"
-                : `Cook my cookbook 🍳 (${requests.length} items)`}
+            {running ? (
+              <span className="flex items-center gap-2">
+                <span className="jiggle">🍳</span> Cooking&hellip;
+              </span>
+            ) : needsSignIn ? (
+              "Sign in to cook"
+            ) : (
+              `Cook my cookbook 🍳 (${requests.length} item${requests.length === 1 ? "" : "s"})`
+            )}
           </button>
         </form>
 
         {/* Progress + result */}
-        <div className="paper-card p-6 min-h-[16rem]">
+        <div className="doodle-card relative p-6 min-h-[16rem]">
+          <span className="tape tape-sage -top-3 right-10 rotate-3" aria-hidden />
           {status === "idle" && (
-            <p className="text-ink-soft">
-              Your live progress will appear here — searching, scaling,
-              illustrating, then building your PDF. We&rsquo;ll chime when
-              it&rsquo;s ready. 🔔
-            </p>
+            <div className="flex h-full min-h-[13rem] flex-col items-center justify-center text-center">
+              <span className="bob text-5xl">🍲</span>
+              <p className="mt-4 max-w-xs text-ink-soft text-pretty">
+                Your live progress will appear here - searching, scaling,
+                illustrating, then building your PDF. We&rsquo;ll chime when
+                it&rsquo;s ready. 🔔
+              </p>
+            </div>
           )}
 
           {(running || status === "done" || events.length > 0) && (
@@ -323,8 +338,11 @@ function NewCookbookInner() {
               })}
               {running && (
                 <div className="mt-3 flex items-center gap-2 text-ink-soft">
-                  <span className="h-2 w-2 animate-ping rounded-full bg-accent" />
-                  working…
+                  <span className="relative flex h-4 w-4 items-center justify-center">
+                    <span className="steam absolute -top-1 text-xs">💨</span>
+                    <span className="h-2 w-2 animate-ping rounded-full bg-accent" />
+                  </span>
+                  <span className="font-script text-lg">working&hellip;</span>
                 </div>
               )}
             </div>
@@ -338,8 +356,8 @@ function NewCookbookInner() {
 
           {result && (
             <div className="mt-5 animate-pop">
-              <div className="font-script text-2xl text-sage">
-                ✅ Done — {result.title}
+              <div className="flex items-center gap-2 font-script text-2xl text-sage">
+                <span className="hero-settle">🎉</span> Done - {result.title}
               </div>
               {typeof result.ai_credits_left === "number" &&
                 result.ai_credits_left >= 0 && (
@@ -351,17 +369,17 @@ function NewCookbookInner() {
               {user && result.saved === false && (
                 <div className="mt-3 rounded-xl border border-line bg-cream/70 p-3 text-xs text-ink-soft">
                   ⚠️ Your PDF is ready below, but the engine couldn&rsquo;t
-                  record this cookbook to your account — it won&rsquo;t show on
+                  record this cookbook to your account - it won&rsquo;t show on
                   your dashboard or profile, and can&rsquo;t be starred or
-                  commented on. (The engine isn&rsquo;t connected to Firebase —
+                  commented on. (The engine isn&rsquo;t connected to Firebase -
                   check its logs.)
                 </div>
               )}
-              <div className="mt-3 flex flex-wrap gap-3">
+              <div className="mt-4 flex flex-wrap gap-3">
                 <a
                   href={apiUrl(result.pdf_url!)}
                   download
-                  className="rounded-full bg-accent px-5 py-2.5 font-semibold text-white shadow-[2px_2px_0_rgba(59,52,46,0.18)] hover:bg-accent-strong transition-colors"
+                  className="btn-doodle px-5 py-2.5"
                 >
                   ⬇ Download PDF
                 </a>
@@ -369,7 +387,7 @@ function NewCookbookInner() {
                   href={apiUrl(result.html_url!)}
                   target="_blank"
                   rel="noreferrer"
-                  className="rounded-full border border-line px-5 py-2.5 font-semibold text-ink hover:border-accent"
+                  className="rounded-full border-2 border-line px-5 py-2.5 font-semibold text-ink transition-colors hover:border-accent hover:text-accent"
                 >
                   ↗ Open preview
                 </a>
@@ -381,12 +399,14 @@ function NewCookbookInner() {
 
       {/* Full-width preview */}
       {result && (
-        <div className="mt-8">
-          <h2 className="font-script text-2xl text-sage">Preview</h2>
+        <div className="mt-10">
+          <h2 className="font-script text-3xl text-sage -rotate-1">
+            📖 Fresh out the oven
+          </h2>
           <iframe
             title="cookbook preview"
             src={apiUrl(result.html_url!)}
-            className="mt-2 h-[720px] w-full rounded-2xl border border-line bg-white"
+            className="mt-3 h-[720px] w-full rounded-2xl border-2 border-line bg-white shadow-[5px_6px_0_rgba(59,52,46,0.12)]"
           />
         </div>
       )}

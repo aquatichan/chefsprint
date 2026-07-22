@@ -36,14 +36,14 @@ export function StarButton({ book }: { book: CookbookDoc }) {
     <button
       onClick={onClick}
       title={user ? "Star (bookmarks it for you)" : "Sign in to star"}
-      className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs transition-colors ${
+      className={`inline-flex items-center gap-1 rounded-full border-2 px-2.5 py-1 text-xs font-semibold transition-all active:scale-95 ${
         starred
-          ? "border-accent bg-accent/10 text-accent"
-          : "border-line text-ink-soft hover:border-accent"
+          ? "border-butter bg-butter/15 text-[#a97a12]"
+          : "border-line text-ink-soft hover:border-butter hover:text-[#a97a12]"
       }`}
     >
-      <span>{starred ? "★" : "☆"}</span>
-      {count !== null && <span>{count}</span>}
+      <span className={starred ? "hero-settle" : ""}>{starred ? "★" : "☆"}</span>
+      {count !== null && <span className="tabular-nums">{count}</span>}
     </button>
   );
 }
@@ -65,7 +65,7 @@ export default function CookbookCard({
     return (
       <Link
         href={href}
-        className="paper-card flex h-28 w-28 flex-col items-center justify-center gap-1 p-2 text-center hover:border-accent"
+        className="doodle-card flex h-28 w-28 flex-col items-center justify-center gap-1 p-2 text-center"
         title={book.title}
       >
         <span className="text-3xl">📖</span>
@@ -80,12 +80,10 @@ export default function CookbookCard({
   return (
     <Link
       href={href}
-      className={`paper-card block p-5 transition-colors hover:border-accent ${
-        isList ? "" : "h-full"
-      }`}
+      className={`doodle-card relative block p-5 ${isList ? "" : "h-full"}`}
     >
       <div className="flex items-start justify-between gap-3">
-        <h3 className="font-display text-lg font-semibold text-ink">
+        <h3 className="font-display text-lg font-semibold text-ink text-balance">
           {book.title}
         </h3>
         {showStar && <StarButton book={book} />}
@@ -96,8 +94,20 @@ export default function CookbookCard({
         </p>
       )}
       <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-ink-soft">
-        {book.recipeCount != null && <span>{book.recipeCount} recipes</span>}
-        {book.usedAi === false && <span>· no AI</span>}
+        {book.recipeCount != null && (
+          <span className="inline-flex items-center gap-1 rounded-full bg-sage/10 px-2 py-0.5 font-semibold text-sage">
+            🍽 {book.recipeCount} recipes
+          </span>
+        )}
+        {book.usedAi === false ? (
+          <span className="rounded-full bg-line/60 px-2 py-0.5">no AI</span>
+        ) : (
+          book.usedAi && (
+            <span className="rounded-full bg-butter/15 px-2 py-0.5 text-[#a97a12]">
+              ✨ AI
+            </span>
+          )
+        )}
         <span className="flex-1" />
         {book.pdfUrl && (
           <button
@@ -105,15 +115,13 @@ export default function CookbookCard({
               e.stopPropagation();
               window.open(apiUrl(book.pdfUrl!), "_blank");
             }}
-            className="rounded-full border border-line px-2.5 py-1 hover:border-accent"
+            className="rounded-full border-2 border-line px-2.5 py-1 font-semibold transition-colors hover:border-accent hover:text-accent"
           >
             PDF
           </button>
         )}
         {remixable && (
-          <span className="rounded-full bg-accent px-2.5 py-1 font-semibold text-white">
-            Remix →
-          </span>
+          <span className="sticker bg-accent text-xs">Remix →</span>
         )}
       </div>
     </Link>
