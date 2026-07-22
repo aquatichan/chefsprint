@@ -56,6 +56,8 @@ export interface ProfileDoc {
   bio?: string;
   aiCredits?: number;
   plan?: string;
+  /** Grants access to /admin. Settable only via the Firebase console (Admin-SDK-only field). */
+  isAdmin?: boolean;
 }
 
 // ---------------------------------------------------------------- profiles

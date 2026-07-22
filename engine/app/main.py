@@ -40,6 +40,11 @@ app.add_middleware(
 )
 
 
+class GrantCreditsRequest(BaseModel):
+    email: str
+    amount: int
+
+
 class JobRequest(BaseModel):
     requests: list[str]
     title: str | None = None
@@ -201,6 +206,29 @@ async def create_job(job: JobRequest, uid: str | None = Depends(get_uid)):
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+@app.post("/admin/grant-credits")
+async def grant_credits(body: GrantCreditsRequest, uid: str | None = Depends(get_uid)):
+    """Manually credit a user's AI generation balance (Cash App credit-pack purchases).
+
+    Admin-only: the caller's own uid must have isAdmin set on their user doc
+    (settable only via the Firebase console / Admin SDK, never from the client
+    — see firestore.rules).
+    """
+    if not fb.is_enabled():
+        raise HTTPException(status_code=404, detail="admin actions require Firebase")
+    if not uid or not fb.is_admin(uid):
+        raise HTTPException(status_code=403, detail="admin access required")
+    if body.amount <= 0:
+        raise HTTPException(status_code=400, detail="amount must be positive")
+
+    target = fb.find_user_by_email(body.email)
+    if not target:
+        raise HTTPException(status_code=404, detail="no user found with that email")
+
+    new_balance = fb.grant_credits(target["uid"], body.amount)
+    return {"uid": target["uid"], "email": target["email"], "aiCredits": new_balance}
 
 
 @app.get("/jobs/{job_id}/{name}")

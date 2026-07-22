@@ -1,60 +1,37 @@
-// Billing scaffolding for Chefsprint Pro. Prices and plan copy live here;
-// checkout is stubbed until Stripe is configured.
+// Billing for Chefsprint AI credit packs, sold via Cash App.
 //
-// TO WIRE UP STRIPE:
-//   1. Create the products/prices in the Stripe dashboard.
-//   2. Create a Payment Link (or Checkout Session endpoint) per plan.
-//   3. Paste each plan's link/ID into `stripePaymentLink` below (or set the
-//      NEXT_PUBLIC_STRIPE_LINK_* env vars, which take precedence).
-//   4. Point the Stripe webhook at the engine to set users/{uid}.plan = "pro"
-//      (the field is Admin-SDK-only per firestore.rules).
+// There's no Cash App API/webhook to confirm a payment automatically, so this
+// is a manual flow: the user pays via a Cash App link (with a note carrying
+// their account email so it can be matched up), then an admin grants the
+// credits from /admin (see app/admin/page.tsx) via POST /admin/grant-credits.
 
-/** Free AI generations per account. Mirrors FREE_AI_GENERATIONS in engine/app/firebase.py. */
+/** Free AI generations every account starts with. Mirrors FREE_AI_GENERATIONS in engine/app/firebase.py. */
 export const FREE_AI_GENERATIONS = 2;
 
-export interface Plan {
-  id: "pro-monthly" | "pro-yearly";
+export const CASHTAG = "$aaronqin";
+
+export interface CreditPack {
+  id: "small" | "medium" | "large";
   name: string;
-  price: string;
-  cadence: string;
+  credits: number;
+  price: number; // USD
   badge?: string;
-  /** Stripe Payment Link or Price ID — empty until configured. */
-  stripePaymentLink: string;
 }
 
-export const PLANS: Plan[] = [
-  {
-    id: "pro-monthly",
-    name: "Pro",
-    price: "$5.99",
-    cadence: "/ month",
-    stripePaymentLink: process.env.NEXT_PUBLIC_STRIPE_LINK_MONTHLY ?? "",
-  },
-  {
-    id: "pro-yearly",
-    name: "Pro yearly",
-    price: "$59.99",
-    cadence: "/ year",
-    badge: "1 month free",
-    stripePaymentLink: process.env.NEXT_PUBLIC_STRIPE_LINK_YEARLY ?? "",
-  },
+export const CREDIT_PACKS: CreditPack[] = [
+  { id: "small", name: "Small", credits: 10, price: 5 },
+  { id: "medium", name: "Medium", credits: 30, price: 12, badge: "Better value" },
+  { id: "large", name: "Large", credits: 60, price: 20, badge: "Best value" },
 ];
+
+/** Cash App payment link pre-filled with the pack's amount. */
+export function cashAppLink(pack: CreditPack): string {
+  return `https://cash.app/${CASHTAG.replace(/^\$/, "")}/${pack.price}`;
+}
 
 export const PRO_FEATURES = [
-  "Unlimited AI cookbook generations",
-  "Complete allergen, serving size, & diet personalization",
-  "Unlimited photo generation for every recipe & variant",
-  "Unlimited remixes of any cookbook",
-  "Premium cookbook styling and layout options",
-  "Priority support",
+  "AI request understanding — plain-English variants & servings",
+  "Allergen & diet personalization",
+  "AI dish photos for every recipe",
+  "Each credit = one AI-assisted cookbook generation",
 ];
-
-/**
- * Send the user to Stripe checkout for `plan`. Returns false when the plan
- * isn't wired to Stripe yet (callers show a "coming soon" notice).
- */
-export function startCheckout(plan: Plan): boolean {
-  if (!plan.stripePaymentLink) return false;
-  window.location.assign(plan.stripePaymentLink);
-  return true;
-}

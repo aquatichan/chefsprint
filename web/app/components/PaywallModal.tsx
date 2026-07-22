@@ -2,17 +2,20 @@
 
 import { useEffect, useState } from "react";
 import {
+  CASHTAG,
+  cashAppLink,
+  CREDIT_PACKS,
   FREE_AI_GENERATIONS,
-  PLANS,
   PRO_FEATURES,
-  startCheckout,
-  type Plan,
+  type CreditPack,
 } from "@/lib/billing";
+import { useAuth } from "@/lib/useAuth";
 
 /**
  * Hard paywall shown when a user is out of free AI generations.
- * Checkout is scaffolding: buttons call startCheckout(), which no-ops (with a
- * notice) until Stripe payment links are configured in lib/billing.ts.
+ * Cash App has no payment webhook, so this is a manual flow: the user pays
+ * via a Cash App link (leaving their account email in the note), then an
+ * admin grants the credits from /admin once the payment shows up.
  */
 export default function PaywallModal({
   open,
@@ -24,8 +27,8 @@ export default function PaywallModal({
   /** Offered as the free escape hatch on the generation form. */
   onContinueWithoutAi?: () => void;
 }) {
-  const [selected, setSelected] = useState<Plan["id"]>("pro-yearly");
-  const [notice, setNotice] = useState<string | null>(null);
+  const { user } = useAuth();
+  const [selected, setSelected] = useState<CreditPack["id"]>("medium");
 
   useEffect(() => {
     if (!open) return;
@@ -36,20 +39,13 @@ export default function PaywallModal({
 
   if (!open) return null;
 
-  function upgrade() {
-    const plan = PLANS.find((p) => p.id === selected)!;
-    if (!startCheckout(plan)) {
-      setNotice(
-        "Checkout isn't connected yet — Stripe is being configured. Hang tight!",
-      );
-    }
-  }
+  const pack = CREDIT_PACKS.find((p) => p.id === selected)!;
 
   return (
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Upgrade to Chefsprint Pro"
+      aria-label="Buy more AI generations"
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
     >
       {/* Scrim */}
@@ -70,12 +66,12 @@ export default function PaywallModal({
 
         <p className="font-script text-2xl text-sage">Your free tastings are up!</p>
         <h2 className="doodle-underline mt-1 inline-block font-display text-3xl font-bold text-ink">
-          Go Pro, keep cooking
+          Grab more AI credits
         </h2>
         <p className="mt-3 text-sm text-ink-soft">
-          You&rsquo;ve used all {FREE_AI_GENERATIONS} free AI generations.
-          Upgrade for unlimited AI cookbooks, or keep making cookbooks without
-          AI features — those are always free.
+          You&rsquo;ve used all {FREE_AI_GENERATIONS} free AI generations. Buy
+          a credit pack to keep using AI features, or keep making cookbooks
+          without AI — those are always free.
         </p>
 
         <ul className="mt-4 space-y-1.5 text-sm text-ink">
@@ -87,46 +83,54 @@ export default function PaywallModal({
           ))}
         </ul>
 
-        {/* Plan picker */}
-        <div className="mt-5 grid gap-3 sm:grid-cols-2">
-          {PLANS.map((plan) => (
+        {/* Pack picker */}
+        <div className="mt-5 grid gap-3 sm:grid-cols-3">
+          {CREDIT_PACKS.map((p) => (
             <button
-              key={plan.id}
-              onClick={() => setSelected(plan.id)}
+              key={p.id}
+              onClick={() => setSelected(p.id)}
               className={`relative rounded-2xl border-2 p-4 text-left transition-colors ${
-                selected === plan.id
+                selected === p.id
                   ? "border-accent bg-accent/5"
                   : "border-line hover:border-accent/50"
               }`}
             >
-              {plan.badge && (
-                <span className="absolute -top-2.5 right-3 rounded-full bg-sage px-2.5 py-0.5 font-script text-sm text-white">
-                  {plan.badge}
+              {p.badge && (
+                <span className="absolute -top-2.5 right-3 rounded-full bg-sage px-2 py-0.5 font-script text-xs text-white">
+                  {p.badge}
                 </span>
               )}
-              <div className="font-semibold text-ink">{plan.name}</div>
+              <div className="font-semibold text-ink">{p.name}</div>
               <div className="mt-1">
                 <span className="font-display text-2xl font-bold text-ink">
-                  {plan.price}
-                </span>{" "}
-                <span className="text-sm text-ink-soft">{plan.cadence}</span>
+                  ${p.price}
+                </span>
               </div>
+              <div className="text-xs text-ink-soft">{p.credits} credits</div>
             </button>
           ))}
         </div>
 
-        {notice && (
-          <div className="mt-4 rounded-xl border border-line bg-cream/70 p-3 text-xs text-ink-soft">
-            {notice}
-          </div>
-        )}
+        <div className="mt-5 rounded-xl border border-line bg-cream/70 p-4 text-sm text-ink">
+          <p className="font-semibold">Before you pay:</p>
+          <p className="mt-1 text-ink-soft">
+            Payments are matched to your account by hand — put{" "}
+            <b className="text-ink">
+              {user?.email ?? "the email you signed in with"}
+            </b>{" "}
+            in the Cash App payment note. Credits are usually added within a
+            day of payment.
+          </p>
+        </div>
 
-        <button
-          onClick={upgrade}
-          className="mt-5 w-full rounded-full bg-accent px-6 py-3 text-lg font-semibold text-white shadow-[3px_3px_0_rgba(59,52,46,0.18)] transition-colors hover:bg-accent-strong"
+        <a
+          href={cashAppLink(pack)}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-4 flex w-full items-center justify-center rounded-full bg-accent px-6 py-3 text-lg font-semibold text-white shadow-[3px_3px_0_rgba(59,52,46,0.18)] transition-colors hover:bg-accent-strong"
         >
-          Upgrade with Stripe →
-        </button>
+          Pay ${pack.price} via Cash App ({CASHTAG}) →
+        </a>
 
         {onContinueWithoutAi && (
           <button
@@ -138,7 +142,7 @@ export default function PaywallModal({
         )}
 
         <p className="mt-3 text-center text-[11px] text-ink-soft">
-          Cancel anytime. Payments handled securely by Stripe.
+          Credits never expire and stack with any free generations left.
         </p>
       </div>
     </div>

@@ -49,6 +49,38 @@ export function apiUrl(path: string): string {
   return path.startsWith("http") ? path : `${API_BASE}${path}`;
 }
 
+export interface GrantCreditsResult {
+  uid: string;
+  email: string;
+  aiCredits: number;
+}
+
+/** Admin-only: credit a user's AI generation balance (Cash App pack purchases). */
+export async function grantCredits(
+  email: string,
+  amount: number,
+  token: string,
+): Promise<GrantCreditsResult> {
+  const res = await fetch(`${API_BASE}/admin/grant-credits`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ email, amount }),
+  });
+  if (!res.ok) {
+    let detail = "";
+    try {
+      detail = (await res.json())?.detail ?? "";
+    } catch {
+      /* non-JSON body */
+    }
+    throw new JobError(detail || `Grant failed (${res.status})`, res.status);
+  }
+  return res.json();
+}
+
 /**
  * POST a job and stream Server-Sent progress events, invoking `onEvent` for each.
  * Resolves when the stream ends.

@@ -205,6 +205,64 @@ def refund_ai_credit(uid: str) -> None:
         log.exception("AI credit refund failed for %s", uid)
 
 
+def is_admin(uid: str) -> bool:
+    """Check the caller's isAdmin flag (Admin-SDK-only field, see firestore.rules)."""
+    if not is_enabled():
+        return False
+    try:
+        from firebase_admin import firestore
+
+        snap = firestore.client().collection("users").document(uid).get()
+        return bool((snap.to_dict() or {}).get("isAdmin"))
+    except Exception:
+        log.exception("admin check failed for %s", uid)
+        return False
+
+
+def find_user_by_email(email: str) -> dict | None:
+    """Resolve a signed-in-with-Google email to a uid + profile doc.
+
+    Looks up Firebase Auth directly (not a Firestore field) since the
+    profile doc doesn't store email — Auth already has it as the source
+    of truth.
+    """
+    if not is_enabled():
+        return None
+    try:
+        from firebase_admin import auth, firestore
+
+        record = auth.get_user_by_email(email.strip().lower())
+        snap = firestore.client().collection("users").document(record.uid).get()
+        return {"uid": record.uid, "email": record.email, **(snap.to_dict() or {})}
+    except auth.UserNotFoundError:
+        return None
+    except Exception:
+        log.exception("user lookup by email failed")
+        return None
+
+
+def grant_credits(uid: str, amount: int) -> int:
+    """Add ``amount`` AI generations to ``uid``'s balance (manual credit-pack grant).
+
+    Unlike refund_ai_credit, this is uncapped — a purchased pack should raise
+    the balance past the free-tier allowance. Returns the new balance.
+    """
+    from firebase_admin import firestore
+
+    client = firestore.client()
+    ref = client.collection("users").document(uid)
+
+    @firestore.transactional
+    def txn(transaction):
+        snap = ref.get(transaction=transaction)
+        data = snap.to_dict() or {}
+        credits = (data.get("aiCredits") or 0) + amount
+        transaction.set(ref, {"aiCredits": credits}, merge=True)
+        return credits
+
+    return txn(client.transaction())
+
+
 def write_progress(job_id: str, data: dict) -> None:
     """Mirror job progress into Firestore so clients can also use onSnapshot."""
     if not is_enabled():

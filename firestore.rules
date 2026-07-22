@@ -14,10 +14,10 @@ service cloud.firestore {
     match /users/{uid} {
       allow read: if true; // profiles + user search are public
       allow create: if signedIn() && request.auth.uid == uid
-        && !request.resource.data.keys().hasAny(['aiCredits', 'plan']);
+        && !request.resource.data.keys().hasAny(['aiCredits', 'plan', 'isAdmin']);
       allow update: if signedIn() && request.auth.uid == uid
         && !request.resource.data.diff(resource.data).affectedKeys()
-            .hasAny(['aiCredits', 'plan']);
+            .hasAny(['aiCredits', 'plan', 'isAdmin']);
 
       // Stars double as bookmarks under the starring user's own doc.
       match /bookmarks/{cookbookId} {
