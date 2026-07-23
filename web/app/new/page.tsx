@@ -2,7 +2,14 @@
 
 import { Fragment, Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { apiUrl, streamJob, JobError, type JobEvent } from "@/lib/api";
+import {
+  apiUrl,
+  streamJob,
+  JobError,
+  friendlyError,
+  MAX_REQUESTS,
+  type JobEvent,
+} from "@/lib/api";
 import { FREE_AI_GENERATIONS } from "@/lib/billing";
 import { getCookbook, getProfile } from "@/lib/db";
 import { playChime, primeAudio } from "@/lib/sound";
@@ -90,22 +97,24 @@ function NewCookbookInner() {
   ]);
   const [title, setTitle] = useState("");
   const dishRefs = useRef<(HTMLTextAreaElement | null)[]>([]);
-  const [focusIndex, setFocusIndex] = useState<number | null>(null);
+  // Index of a freshly-added dish box to focus once it mounts. A ref (not
+  // state) so the focus effect doesn't call setState synchronously.
+  const pendingFocus = useRef<number | null>(null);
 
   useEffect(() => {
-    if (focusIndex === null) return;
-    dishRefs.current[focusIndex]?.focus();
-    setFocusIndex(null);
-  }, [focusIndex]);
+    if (pendingFocus.current === null) return;
+    dishRefs.current[pendingFocus.current]?.focus();
+    pendingFocus.current = null;
+  }, [dishes]);
 
   function updateDish(i: number, value: string) {
     setDishes((prev) => prev.map((d, idx) => (idx === i ? value : d)));
   }
   function addDish() {
     setDishes((prev) => {
-      const next = [...prev, ""];
-      setFocusIndex(next.length - 1);
-      return next;
+      if (prev.length >= MAX_REQUESTS) return prev; // matches the engine's cap
+      pendingFocus.current = prev.length; // focus the new box once it mounts
+      return [...prev, ""];
     });
   }
   function removeDish(i: number) {
@@ -206,7 +215,7 @@ function NewCookbookInner() {
         setStatus("idle");
         return;
       }
-      setError(err instanceof Error ? err.message : String(err));
+      setError(friendlyError(err));
       setStatus("error");
     }
   }
@@ -214,7 +223,7 @@ function NewCookbookInner() {
   return (
     <div className="mx-auto max-w-5xl px-5 py-10">
       <div className="flex items-center gap-3">
-        <span className="text-4xl bob">{remixId ? "🔄" : "🧑🍳"}</span>
+        <span className="text-4xl bob">{remixId ? "🔄" : "🧑‍🍳"}</span>
         <h1 className="font-display text-4xl font-bold text-ink doodle-underline draw-underline inline-block">
           {remixId ? "Remix cookbook" : "New cookbook"}
         </h1>
@@ -266,10 +275,12 @@ function NewCookbookInner() {
           <button
             type="button"
             onClick={addDish}
-            disabled={running}
+            disabled={running || dishes.length >= MAX_REQUESTS}
             className="mt-3 w-full rounded-xl border-2 border-dashed border-line py-2.5 text-sm font-semibold text-ink-soft transition-colors hover:border-accent hover:text-accent disabled:opacity-60"
           >
-            + Add recipe
+            {dishes.length >= MAX_REQUESTS
+              ? `Max ${MAX_REQUESTS} recipes per cookbook`
+              : "+ Add recipe"}
           </button>
 
           <input

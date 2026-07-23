@@ -3,6 +3,9 @@
 export const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000";
 
+/** Max recipes per cookbook. Mirrors the engine's MAX_REQUESTS (JobRequest cap). */
+export const MAX_REQUESTS = 30;
+
 export type JobEvent = {
   type: "start" | "progress" | "done" | "error" | string;
   stage?: string;
@@ -31,6 +34,31 @@ export class JobError extends Error {
     super(message);
     this.name = "JobError";
   }
+}
+
+/**
+ * Turn any caught error into copy that's safe to show a user.
+ *
+ * The engine already sends user-ready messages for its deliberate failures
+ * (paywall, rate limit, bad request), so those pass through; validation (422)
+ * and raw network/unexpected errors get friendly copy instead of "Failed to
+ * fetch" or a stringified exception. The original error is logged for debugging.
+ */
+export function friendlyError(err: unknown): string {
+  if (err instanceof JobError) {
+    // 422 = our own size caps rejected the payload; its detail is a raw
+    // validation array, not user copy.
+    if (err.status === 422) return "Please check your recipe list and try again.";
+    return err.message;
+  }
+  // fetch() rejects with a TypeError on connection failure ("Failed to fetch",
+  // "Load failed", "NetworkError…") across browsers.
+  const raw = err instanceof Error ? err.message : String(err);
+  if (err instanceof TypeError || /failed to fetch|load failed|network/i.test(raw)) {
+    return "Couldn't reach the kitchen — check your connection and try again.";
+  }
+  console.error("Unexpected error:", err);
+  return "Something went wrong on our end. Please try again in a moment.";
 }
 
 export interface JobInput {

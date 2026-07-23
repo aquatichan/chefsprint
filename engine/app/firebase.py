@@ -16,6 +16,7 @@ from __future__ import annotations
 import logging
 import os
 import sys
+import time
 from functools import lru_cache
 
 from . import config as _config  # noqa: F401  — loads .env before we read os.environ
@@ -91,13 +92,17 @@ def verify_token(id_token: str) -> dict | None:
 
 
 def upload_bytes(path: str, data: bytes, content_type: str) -> str | None:
-    """Upload to Cloud Storage and return a public URL (or None if disabled).
+    """Upload to Cloud Storage and return the stored object path (or None if disabled).
 
-    Cookbooks are meant to be shared/downloaded, so objects are made public
-    rather than signed: signed URLs need a private key to sign with, which
-    Cloud Run's Application Default Credentials (a token, not a key) can't
-    do without an extra IAM Credentials API round-trip. Public + no expiry
-    also means links in Firestore docs never go stale.
+    Objects are **not** made public: a public object is served straight from
+    storage.googleapis.com and bypasses Storage security rules entirely, which
+    would leak the files of any cookbook marked ``public: false``. Instead the
+    API streams files back through an authenticated proxy (see
+    ``GET /cookbooks/{id}/{kind}`` in main.py) that checks the cookbook's
+    ``public`` flag and ownership before handing over any bytes. That check
+    needs no signing key — the Admin SDK reads objects directly with ADC — so
+    it also avoids the private-key round-trip that signed URLs require on
+    Cloud Run.
     """
     if not is_enabled():
         return None
@@ -106,10 +111,29 @@ def upload_bytes(path: str, data: bytes, content_type: str) -> str | None:
 
         blob = storage.bucket().blob(path)
         blob.upload_from_string(data, content_type=content_type)
-        blob.make_public()
-        return blob.public_url
+        return path
     except Exception:
         log.exception("Cloud Storage upload failed for %s — falling back to local disk", path)
+        return None
+
+
+def download_bytes(path: str) -> bytes | None:
+    """Read an object's bytes from Cloud Storage (or None if missing/disabled).
+
+    Used by the authenticated file proxy; the Admin SDK's ADC lets us read
+    private objects directly, so no public access or signed URL is involved.
+    """
+    if not is_enabled():
+        return None
+    try:
+        from firebase_admin import storage
+
+        blob = storage.bucket().blob(path)
+        if not blob.exists():
+            return None
+        return blob.download_as_bytes()
+    except Exception:
+        log.exception("Cloud Storage read failed for %s", path)
         return None
 
 
@@ -203,6 +227,58 @@ def refund_ai_credit(uid: str) -> None:
         txn(client.transaction())
     except Exception:
         log.exception("AI credit refund failed for %s", uid)
+
+
+# Per-uid job submission caps, enforced across Cloud Run instances via a shared
+# Firestore counter. Two fixed windows: a short one stops rapid hammering, a
+# daily one bounds a single account's total Cloud Run spend. Override via env.
+_RATE_WINDOWS = (
+    ("short", int(os.getenv("RATE_LIMIT_SHORT_MAX", "8")), 300),      # 8 / 5 min
+    ("long", int(os.getenv("RATE_LIMIT_LONG_MAX", "40")), 86_400),    # 40 / day
+)
+
+
+def check_rate_limit(uid: str) -> tuple[bool, int]:
+    """Rate-limit a uid's job submissions. Returns ``(allowed, retry_after_s)``.
+
+    Uses fixed-window counters in a ``rateLimits/{uid}`` doc so the cap holds
+    across instances. Fails open (allows, retry_after 0) on any Firestore error
+    and when Firebase is disabled — a limiter hiccup must not lock users out,
+    matching consume_ai_credit's fail-open stance.
+    """
+    if not is_enabled():
+        return True, 0
+    try:
+        from firebase_admin import firestore
+
+        now = int(time.time())
+        windows = [
+            (name, limit, size, now // size) for name, limit, size in _RATE_WINDOWS
+        ]
+        client = firestore.client()
+        ref = client.collection("rateLimits").document(uid)
+
+        @firestore.transactional
+        def txn(transaction):
+            data = ref.get(transaction=transaction).to_dict() or {}
+            updates = {}
+            retry_after = 0
+            for name, limit, size, bucket in windows:
+                count = data.get(f"{name}Count", 0) if data.get(f"{name}Bucket") == bucket else 0
+                if count >= limit:
+                    retry_after = max(retry_after, size - (now % size))
+                else:
+                    updates[f"{name}Bucket"] = bucket
+                    updates[f"{name}Count"] = count + 1
+            if retry_after:  # at least one window is full: reject, don't count it
+                return False, retry_after
+            transaction.set(ref, updates, merge=True)
+            return True, 0
+
+        return txn(client.transaction())
+    except Exception:
+        log.exception("rate-limit check failed for %s — allowing", uid)
+        return True, 0
 
 
 def is_admin(uid: str) -> bool:

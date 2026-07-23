@@ -31,8 +31,11 @@ export default function ProfileSettingsModal({
   // Seed the form whenever it opens.
   useEffect(() => {
     if (!open) return;
+    // Seed the editable form from props each time the modal opens (intentional).
+    /* eslint-disable react-hooks/set-state-in-effect */
     setBio(profile.bio ?? "");
     setLinks(profile.links ?? {});
+    /* eslint-enable react-hooks/set-state-in-effect */
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);

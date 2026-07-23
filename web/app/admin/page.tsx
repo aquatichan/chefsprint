@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { grantCredits, JobError } from "@/lib/api";
+import { grantCredits, friendlyError } from "@/lib/api";
 import { getProfile } from "@/lib/db";
 import { useAuth } from "@/lib/useAuth";
 
@@ -38,13 +38,7 @@ export default function AdminPage() {
       setResult(`Granted ${amount} credits to ${res.email} — new balance: ${res.aiCredits}`);
       setEmail("");
     } catch (err) {
-      setError(
-        err instanceof JobError
-          ? err.message
-          : err instanceof Error
-            ? err.message
-            : String(err),
-      );
+      setError(friendlyError(err));
     } finally {
       setBusy(false);
     }

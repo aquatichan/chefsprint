@@ -1,6 +1,8 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
+import logo from "@/public/chefsprint-logo.png";
 
 // A big pool of kitchen glyphs; the reel is sampled fresh on every mount so the
 // spin looks different each visit. It always resolves to the Chefsprint logo.
@@ -26,6 +28,10 @@ export default function HeroLogo() {
   const [settled, setSettled] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // The intro reel is a client-only, timer-driven animation, so it necessarily
+  // sets state after mount — that's what this effect is for. The React 19
+  // set-state-in-effect rule is a false positive here.
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     const r = sampleReel(15);
     setReel(r);
@@ -51,6 +57,7 @@ export default function HeroLogo() {
       if (timer.current) clearTimeout(timer.current);
     };
   }, []);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const spinning = !settled && frame < reel.length;
 
@@ -80,10 +87,11 @@ export default function HeroLogo() {
         {spinning ? (
           <span className="text-7xl leading-none">{reel[frame]}</span>
         ) : (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src="/chefsprint-logo.png"
+          <Image
+            src={logo}
             alt="Chefsprint logo"
+            width={100}
+            height={100}
             className="h-[100px] w-[100px] drop-shadow-[2px_2px_0_rgba(0,0,0,0.35)]"
           />
         )}

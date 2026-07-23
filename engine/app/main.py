@@ -11,15 +11,17 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import os
 import threading
 from pathlib import Path
+from typing import Annotated, Literal
 from uuid import uuid4
 
-from fastapi import Depends, FastAPI, Header, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from . import firebase as fb
 from .models import Cookbook
@@ -27,6 +29,8 @@ from .render import render_html, render_pdf
 from .run import build_cookbook
 
 OUT_DIR = Path(os.getenv("CHEFSPRINT_OUT") or "out/jobs")
+
+log = logging.getLogger("chefsprint.api")
 
 app = FastAPI(title="Chefsprint Engine", version="0.1.0")
 
@@ -45,14 +49,25 @@ class GrantCreditsRequest(BaseModel):
     amount: int
 
 
+# Input-size caps: each request line is a dish name or URL, so a cookbook of
+# tens of recipes with generous per-line length still bounds a single job's
+# fan-out (and its scrape/parse/render compute) to something sane.
+MAX_REQUESTS = 30
+MAX_REQUEST_LEN = 2000
+MAX_META_LEN = 200
+
+
 class JobRequest(BaseModel):
-    requests: list[str]
-    title: str | None = None
-    subtitle: str | None = None
-    theme: str = "doodle-cream"
+    requests: Annotated[
+        list[Annotated[str, Field(min_length=1, max_length=MAX_REQUEST_LEN)]],
+        Field(min_length=1, max_length=MAX_REQUESTS),
+    ]
+    title: Annotated[str, Field(max_length=MAX_META_LEN)] | None = None
+    subtitle: Annotated[str, Field(max_length=MAX_META_LEN)] | None = None
+    theme: Annotated[str, Field(max_length=64)] = "doodle-cream"
     use_ai: bool = True  # off = deterministic pipeline, no credit consumed
-    cookbook_id: str | None = None  # set when remixing an existing cookbook
-    mode: str = "new"  # "new" | "replace" (replace requires ownership)
+    cookbook_id: Annotated[str, Field(max_length=64)] | None = None  # set when remixing
+    mode: Literal["new", "replace"] = "new"  # replace requires ownership
     public: bool = True
 
 
@@ -80,6 +95,15 @@ def _describe(book: Cookbook) -> str:
     return f"{len(titles)} recipe{'s' if len(titles) != 1 else ''} . {' & '.join(cats)} - {head}"
 
 
+def _object_path(uid: str | None, cookbook_id: str, ext: str) -> str:
+    """Cloud Storage object path for a cookbook's rendered output.
+
+    Deterministic so the file proxy can rebuild it from the Firestore doc's
+    uid without storing a separate path field.
+    """
+    return f"cookbooks/{uid or 'anon'}/{cookbook_id}.{ext}"
+
+
 def _persist(job_id: str, uid: str | None, book: Cookbook, html: str, pdf: bytes,
              job: JobRequest) -> dict:
     """Store outputs (Cloud Storage or local disk) and record the cookbook doc.
@@ -87,13 +111,18 @@ def _persist(job_id: str, uid: str | None, book: Cookbook, html: str, pdf: bytes
     The returned dict includes ``saved``: whether the Firestore doc was written
     (i.e. whether this cookbook will show up on dashboards/profiles).
     """
-    pdf_url = fb.upload_bytes(f"cookbooks/{uid or 'anon'}/{job_id}.pdf", pdf, "application/pdf")
-    if pdf_url:
-        html_url = fb.upload_bytes(
-            f"cookbooks/{uid or 'anon'}/{job_id}.html", html.encode("utf-8"), "text/html"
+    # Cloud Storage objects are private; clients read them back through the
+    # authenticated proxy (GET /cookbooks/{id}/{kind}), never a public URL.
+    if fb.upload_bytes(_object_path(uid, job_id, "pdf"), pdf, "application/pdf"):
+        html_ok = fb.upload_bytes(
+            _object_path(uid, job_id, "html"), html.encode("utf-8"), "text/html"
         )
-        urls = {"pdf_url": pdf_url, "html_url": html_url}
+        urls = {
+            "pdf_url": f"/cookbooks/{job_id}/pdf",
+            "html_url": f"/cookbooks/{job_id}/html" if html_ok else None,
+        }
     else:
+        # Local-disk fallback (dev / no Firebase): served open by /jobs/{id}/...
         job_dir = OUT_DIR / job_id
         job_dir.mkdir(parents=True, exist_ok=True)
         (job_dir / "cookbook.pdf").write_bytes(pdf)
@@ -127,6 +156,18 @@ def health() -> dict:
 async def create_job(job: JobRequest, uid: str | None = Depends(get_uid)):
     if not job.requests:
         raise HTTPException(status_code=400, detail="no requests provided")
+
+    # Throttle before doing any work (or spending an AI credit). Keyed by uid,
+    # so it's active whenever Firebase auth is (see check_rate_limit).
+    if uid:
+        allowed, retry_after = fb.check_rate_limit(uid)
+        if not allowed:
+            raise HTTPException(
+                status_code=429,
+                detail="You're creating cookbooks too quickly. Take a short break "
+                       "and try again.",
+                headers={"Retry-After": str(retry_after)},
+            )
 
     # Replacing an existing cookbook keeps its id (and Firestore doc), but only
     # for its owner; everyone else implicitly saves a new copy.
@@ -186,8 +227,11 @@ async def create_job(job: JobRequest, uid: str | None = Depends(get_uid)):
                 push({"type": "done", "job_id": job_id, "title": book.title,
                       "recipe_count": len(book.recipes),
                       "ai_credits_left": remaining, **urls})
-        except Exception as exc:
-            fail(str(exc))
+        except Exception:
+            # Never surface a raw exception to the user; log it for us instead.
+            log.exception("job %s failed", job_id)
+            fail("Something went wrong while building your cookbook. "
+                 "Please try again.")
         finally:
             push({"type": "__end__"})
 
@@ -229,6 +273,79 @@ async def grant_credits(body: GrantCreditsRequest, uid: str | None = Depends(get
 
     new_balance = fb.grant_credits(target["uid"], body.amount)
     return {"uid": target["uid"], "email": target["email"], "aiCredits": new_balance}
+
+
+def _uid_from(authorization: str | None, token: str | None) -> str | None:
+    """Verify a Firebase ID token from a Bearer header or a ``token`` query param."""
+    raw = None
+    if authorization and authorization.startswith("Bearer "):
+        raw = authorization.split(" ", 1)[1]
+    elif token:
+        raw = token
+    if not raw:
+        return None
+    claims = fb.verify_token(raw)
+    return claims.get("uid") if claims else None
+
+
+def _safe_filename(name: str) -> str:
+    keep = "".join(c if (c.isalnum() or c in " -_") else "_" for c in name).strip()
+    return (keep or "cookbook")[:80]
+
+
+@app.get("/cookbooks/{cookbook_id}/{kind}")
+def get_cookbook_file(
+    cookbook_id: str,
+    kind: str,
+    authorization: str | None = Header(default=None),
+    token: str | None = None,
+):
+    """Stream a cookbook's PDF/HTML after enforcing its privacy.
+
+    Storage objects are never public; every read comes through here so the
+    cookbook's ``public`` flag and ownership are checked before any bytes go
+    out. Public cookbooks are readable by anyone (matching the Firestore read
+    rule); a private cookbook requires its owner, proven by a Firebase ID token
+    sent either as a Bearer header (fetch) or a short-lived ``?token=`` query
+    param — the latter for plain <iframe>/<a> navigations, which can't set
+    headers. (Only an owner's own token for their own private book is ever put
+    in a URL, and ID tokens are short-lived.)
+    """
+    ext = kind if kind in ("pdf", "html") else None
+    if ext is None:
+        raise HTTPException(status_code=404, detail="not found")
+
+    doc = fb.get_cookbook_doc(cookbook_id)
+    if doc is None:
+        raise HTTPException(status_code=404, detail="not found")
+
+    if not doc.get("public"):
+        caller = _uid_from(authorization, token)
+        if not caller or caller != doc.get("uid"):
+            raise HTTPException(status_code=403, detail="this cookbook is private")
+
+    data = fb.download_bytes(_object_path(doc.get("uid"), cookbook_id, ext))
+    if data is None:
+        raise HTTPException(status_code=404, detail="not found")
+
+    # Public books are immutable-by-id and briefly cacheable; private ones must
+    # never be stored by shared caches.
+    cache = "public, max-age=60" if doc.get("public") else "private, no-store"
+    if ext == "pdf":
+        filename = _safe_filename(doc.get("title") or "cookbook")
+        return Response(
+            content=data,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}.pdf"',
+                "Cache-Control": cache,
+            },
+        )
+    return Response(
+        content=data,
+        media_type="text/html; charset=utf-8",
+        headers={"Cache-Control": cache},
+    )
 
 
 @app.get("/jobs/{job_id}/{name}")

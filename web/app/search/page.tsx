@@ -14,11 +14,18 @@ import { useAuth } from "@/lib/useAuth";
 
 function Avatar({ p, size = "md" }: { p: ProfileDoc; size?: "md" | "lg" }) {
   const dim = size === "lg" ? "h-14 w-14 text-2xl" : "h-11 w-11 text-lg";
+  const px = size === "lg" ? 56 : 44;
   return p.photoURL ? (
+    // Remote Google avatar: native lazy-load so long chef grids don't fetch
+    // every photo up front (already small + CDN-optimized, so no next/image).
     // eslint-disable-next-line @next/next/no-img-element
     <img
       src={p.photoURL}
       alt=""
+      width={px}
+      height={px}
+      loading="lazy"
+      decoding="async"
       className={`${dim} rounded-full border-2 border-line object-cover`}
     />
   ) : (
@@ -90,6 +97,9 @@ export default function SearchPage() {
   }, [enabled]);
 
   // Debounced live user search.
+  // Debounced live search: it sets loading/result state after mount by design,
+  // so the React 19 set-state-in-effect rule is a false positive here.
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (!q.trim()) {
       setResults(null);
@@ -102,6 +112,7 @@ export default function SearchPage() {
     }, 300);
     return () => clearTimeout(t);
   }, [q]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   if (!enabled) {
     return (

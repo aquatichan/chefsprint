@@ -14,10 +14,9 @@ export function useAuth() {
   const [loading, setLoading] = useState(firebaseEnabled);
 
   useEffect(() => {
-    if (!firebaseEnabled) {
-      setLoading(false);
-      return;
-    }
+    // `loading` already starts at `firebaseEnabled`, so when Firebase is off
+    // it's already false — just skip the auth subscription.
+    if (!firebaseEnabled) return;
     return watchUser((u) => {
       setUser(u);
       setLoading(false);

@@ -1,13 +1,14 @@
 rules_version = '2';
 
-// The engine uploads via the Admin SDK and hands clients time-limited signed URLs,
-// so no public read is needed. Cookbook files are scoped to their owner; all client
-// writes are denied.
+// Clients never read Cloud Storage directly. The engine writes cookbook files
+// with the Admin SDK (which bypasses these rules) and streams them back through
+// its own authenticated proxy (GET /cookbooks/{id}/{kind}), which enforces each
+// cookbook's `public` flag and ownership. So all direct client access is denied:
+// objects are never public, which is what keeps `public: false` cookbooks private.
 service firebase.storage {
   match /b/{bucket}/o {
-    match /cookbooks/{uid}/{file=**} {
-      allow read: if request.auth != null && request.auth.uid == uid;
-      allow write: if false;
+    match /{allPaths=**} {
+      allow read, write: if false;
     }
   }
 }

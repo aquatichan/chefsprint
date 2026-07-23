@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import CookbookCard, { type ViewMode } from "../components/CookbookCard";
+import PaywallModal from "../components/PaywallModal";
 import { FREE_AI_GENERATIONS } from "@/lib/billing";
 import {
   ensureProfile,
@@ -26,10 +27,14 @@ export default function Dashboard() {
   const [books, setBooks] = useState<CookbookDoc[] | null>(null);
   const [bookmarks, setBookmarks] = useState<BookmarkDoc[]>([]);
   const [credits, setCredits] = useState<number | null>(null);
+  const [paywallOpen, setPaywallOpen] = useState(false);
 
   // Restore the user's preferred layout.
   useEffect(() => {
+    // Client-only localStorage read: it must run after mount (not during SSR),
+    // so seeding view here is intentional, not the anti-pattern the rule guards.
     const saved = localStorage.getItem("chefsprint.view") as ViewMode | null;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (saved) setView(saved);
   }, []);
   function changeView(v: ViewMode) {
@@ -88,12 +93,14 @@ export default function Dashboard() {
                   <span className="inline-flex items-center gap-1 rounded-full bg-butter/15 px-2.5 py-0.5 font-semibold text-[#a97a12] tabular-nums">
                     ✨ {credits} AI credit{credits === 1 ? "" : "s"} left
                   </span>
-                  <Link
-                    href="/credits"
-                    className="font-semibold text-accent underline decoration-wavy underline-offset-2 hover:text-accent-strong"
-                  >
-                    {credits === 0 ? "buy more" : "top up"}
-                  </Link>
+                  {credits === 0 && (
+                    <button
+                      onClick={() => setPaywallOpen(true)}
+                      className="font-semibold text-accent underline decoration-wavy underline-offset-2 hover:text-accent-strong"
+                    >
+                      buy more
+                    </button>
+                  )}
                 </span>
               )}
             </p>
@@ -177,6 +184,7 @@ export default function Dashboard() {
         </section>
       )}
 
+      <PaywallModal open={paywallOpen} onClose={() => setPaywallOpen(false)} />
     </div>
   );
 }

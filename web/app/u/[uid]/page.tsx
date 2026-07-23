@@ -77,6 +77,9 @@ export default function ProfilePage() {
             <img
               src={profile.photoURL}
               alt=""
+              width={96}
+              height={96}
+              decoding="async"
               className="h-24 w-24 rounded-full border-2 border-line object-cover shadow-[3px_3px_0_rgba(59,52,46,0.18)]"
             />
           ) : (
