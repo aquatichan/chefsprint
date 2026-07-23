@@ -24,6 +24,13 @@ _DIET_TAGS = [
 _CATEGORIES = ["Breakfast", "Lunch", "Dinner", "Dessert", "Vegetarian", "Drinks", "Snacks"]
 
 
+#  Gemini's 2.5 models "think" before answering, which can comfortably exceed
+#  the short timeout used for scraping/search HTTP calls. Give AI calls their
+#  own longer budget instead of stretching settings.request_timeout (shared
+#  with those network fetches, which should stay snappy on dead sites).
+_GEMINI_TIMEOUT = 45.0
+
+
 def _gemini_json(model: str, prompt: str, schema: dict | None = None) -> dict:
     """Call Gemini and return parsed JSON from the first candidate."""
     settings = get_settings()
@@ -41,7 +48,7 @@ def _gemini_json(model: str, prompt: str, schema: dict | None = None) -> dict:
             "contents": [{"parts": [{"text": prompt}]}],
             "generationConfig": generation_config,
         },
-        timeout=settings.request_timeout,
+        timeout=_GEMINI_TIMEOUT,
     )
     resp.raise_for_status()
     text = resp.json()["candidates"][0]["content"]["parts"][0]["text"]

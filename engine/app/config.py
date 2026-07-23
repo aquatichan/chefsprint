@@ -73,7 +73,7 @@ class Settings:
     # Cheap structured-output model for parsing requests; a stronger one for edits;
     # an image model for the per-recipe dish art.
     gemini_model_parse: str = "gemini-2.5-flash-lite"
-    gemini_model_modify: str = "gemini-2.5-flash"
+    gemini_model_modify: str = "gemini-flash-latest"
     gemini_model_image: str = "gemini-2.5-flash-image"
     # A realistic browser UA — many recipe sites (and DuckDuckGo) reject bot UAs
     # with 403/202, which would otherwise sink the scrape.
@@ -98,6 +98,6 @@ def get_settings() -> Settings:
         gemini_api_key=os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY"),
         tavily_api_key=os.getenv("TAVILY_API_KEY"),
         gemini_model_parse=os.getenv("GEMINI_MODEL_PARSE", "gemini-2.5-flash-lite"),
-        gemini_model_modify=os.getenv("GEMINI_MODEL_MODIFY", "gemini-2.5-flash"),
+        gemini_model_modify=os.getenv("GEMINI_MODEL_MODIFY", "gemini-flash-latest"),
         gemini_model_image=os.getenv("GEMINI_MODEL_IMAGE", "gemini-2.5-flash-image"),
     )
