@@ -14,7 +14,7 @@ export default function Header() {
           <img
             src="/chefsprint-logo.png"
             alt="Chefsprint"
-            className="h-9 w-9 hover-jiggle drop-shadow-[1px_1px_0_rgba(59,52,46,0.18)]"
+            className="h-[45px] w-[45px] hover-jiggle drop-shadow-[1px_1px_0_rgba(59,52,46,0.18)]"
           />
           <span className="font-display text-xl font-semibold group-hover:text-accent transition-colors">
             Chefsprint

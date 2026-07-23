@@ -55,7 +55,7 @@ export default function HeroLogo() {
   const spinning = !settled && frame < reel.length;
 
   return (
-    <div className="relative mx-auto flex h-32 w-32 items-center justify-center">
+    <div className="relative mx-auto flex h-40 w-40 items-center justify-center">
       {/* Rotating golden sun rays, revealed once the reel settles */}
       <div
         aria-hidden
@@ -73,18 +73,18 @@ export default function HeroLogo() {
 
       {/* Rounded black backdrop tile that makes the emblem pop */}
       <div
-        className={`relative flex h-28 w-28 items-center justify-center rounded-[26px] shadow-[4px_5px_0_rgba(59,52,46,0.28)] transition-colors duration-500 ${
+        className={`relative flex h-[140px] w-[140px] items-center justify-center rounded-[32px] shadow-[4px_5px_0_rgba(59,52,46,0.28)] transition-colors duration-500 ${
           settled ? "bg-ink" : "bg-ink/85"
         } ${settled ? "hero-settle" : ""}`}
       >
         {spinning ? (
-          <span className="text-6xl leading-none">{reel[frame]}</span>
+          <span className="text-7xl leading-none">{reel[frame]}</span>
         ) : (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src="/chefsprint-logo.png"
             alt="Chefsprint logo"
-            className="h-20 w-20 drop-shadow-[2px_2px_0_rgba(0,0,0,0.35)]"
+            className="h-[100px] w-[100px] drop-shadow-[2px_2px_0_rgba(0,0,0,0.35)]"
           />
         )}
       </div>

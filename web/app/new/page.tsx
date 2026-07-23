@@ -359,7 +359,7 @@ function NewCookbookInner() {
           {result && (
             <div className="mt-5 animate-pop">
               <div className="flex items-center gap-2 font-script text-2xl text-sage">
-                <span className="hero-settle">🎉</span> Done - {result.title}
+                <span className="inline-block hero-settle">🎉</span> Done - {result.title}
               </div>
               {typeof result.ai_credits_left === "number" &&
                 result.ai_credits_left >= 0 && (

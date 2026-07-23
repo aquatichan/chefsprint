@@ -253,7 +253,11 @@ body {
   70% { transform: scale(0.96); }
   100% { transform: scale(1); }
 }
-.hero-settle { display: inline-block; animation: settle-bounce 0.5s ease-out both; }
+/* Animation only — no forced display, so it can't clobber a flex/grid container's
+   layout (an unlayered custom rule otherwise beats Tailwind's layered utilities
+   at equal specificity). Elements that need inline-block for the transform to
+   apply (plain <span> emoji) should add Tailwind's `inline-block` alongside this. */
+.hero-settle { animation: settle-bounce 0.5s ease-out both; }
 
 @media (prefers-reduced-motion: reduce) {
   .hero-rays, .hero-settle, .jiggle, .bob, .steam,
