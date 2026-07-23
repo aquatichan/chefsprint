@@ -9,6 +9,8 @@ through the identical engine and look the same.
 
 from __future__ import annotations
 
+import base64
+from functools import lru_cache
 from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
@@ -18,7 +20,18 @@ from .models import CATEGORIES, Cookbook, Recipe
 _APP_DIR = Path(__file__).parent
 _TEMPLATES = _APP_DIR / "templates"
 _THEMES = _TEMPLATES / "themes"
-_VENDOR = _APP_DIR / "static" / "vendor"
+_STATIC = _APP_DIR / "static"
+_VENDOR = _STATIC / "vendor"
+
+
+@lru_cache(maxsize=1)
+def _logo_data_uri() -> str:
+    """The Chefsprint logo, embedded so the cookbook HTML/PDF is self-contained."""
+    path = _STATIC / "chefsprint-logo.png"
+    if not path.exists():
+        return ""
+    b64 = base64.b64encode(path.read_bytes()).decode("ascii")
+    return f"data:image/png;base64,{b64}"
 
 _env = Environment(
     loader=FileSystemLoader(str(_TEMPLATES)),
@@ -66,6 +79,7 @@ def render_html(cookbook: Cookbook, *, paged: bool = True) -> str:
         index_entries=page_order,
         theme_css=_theme_css(cookbook.theme),
         pagedjs_js=pagedjs,
+        logo_data_uri=_logo_data_uri(),
         date_str=cookbook.created_at.strftime("%B %Y"),
     )
 

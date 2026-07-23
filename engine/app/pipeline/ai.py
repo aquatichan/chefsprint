@@ -144,3 +144,60 @@ Instructions:
     if suffix and suffix.lower() not in recipe.title.lower():
         recipe.title = f"{recipe.title} {suffix}"
     return recipe
+
+
+# --------------------------------------------------------------------- nutrition
+
+_NUTRITION_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "calories": {"type": "integer"},
+        "protein_g": {"type": "number"},
+        "carbs_g": {"type": "number"},
+        "fat_g": {"type": "number"},
+        "fiber_g": {"type": "number"},
+        "sugar_g": {"type": "number"},
+        "sodium_mg": {"type": "integer"},
+    },
+    "required": ["calories", "protein_g", "carbs_g", "fat_g"],
+}
+
+
+def estimate_nutrition_with_gemini(recipe: Recipe) -> dict:
+    """Estimate per-serving nutrition for the recipe's final ingredient list.
+
+    Returns a dict of macros keyed like _NUTRITION_SCHEMA, plus ``per: "serving"``.
+    Raises on failure so the caller can skip nutrition gracefully.
+    """
+    ingredient_lines = "\n".join(f"- {ing.display()}" for ing in recipe.ingredients)
+    prompt = f"""Estimate the nutrition for ONE serving of this recipe.
+
+The full ingredient list below makes {recipe.servings} serving(s); divide totals by
+{recipe.servings} to get per-serving values. Give realistic best-estimate numbers for a
+typical preparation. Round sensibly. Units: calories (kcal), protein/carbs/fat/fiber/
+sugar in grams, sodium in milligrams.
+
+RECIPE: {recipe.title}
+Ingredients (for {recipe.servings} serving(s)):
+{ingredient_lines}"""
+
+    data = _gemini_json(get_settings().gemini_model_modify, prompt, _NUTRITION_SCHEMA)
+
+    def _num(key: str):
+        v = data.get(key)
+        return v if isinstance(v, (int, float)) else None
+
+    out = {
+        "calories": _num("calories"),
+        "protein_g": _num("protein_g"),
+        "carbs_g": _num("carbs_g"),
+        "fat_g": _num("fat_g"),
+        "fiber_g": _num("fiber_g"),
+        "sugar_g": _num("sugar_g"),
+        "sodium_mg": _num("sodium_mg"),
+        "per": "serving",
+    }
+    # Require the core macros to consider the estimate usable.
+    if out["calories"] is None or out["protein_g"] is None:
+        raise ValueError("incomplete nutrition estimate")
+    return out

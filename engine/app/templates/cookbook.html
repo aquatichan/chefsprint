@@ -12,6 +12,26 @@
 {%- macro orn_utensils() -%}
 <svg class="orn orn-utensils" viewBox="0 0 40 40" width="32" height="32"><g fill="none" stroke="#7C8A5A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5 v9 M8 5 v6 M16 5 v6 M8 11 q4 3.5 8 0 M12 14 v20"/><path d="M28 5 c-4.5 1 -4.5 10 0 11 v18 M28 5 c4.5 1 4.5 10 0 11"/></g></svg>
 {%- endmacro -%}
+{#- Round a possibly-null nutrition number, or an em space placeholder. -#}
+{%- macro num(v) -%}{% if v is not none %}{{ v | round | int }}{% else %}–{% endif %}{%- endmacro -%}
+{%- macro nutrition_card(r) -%}
+{%- set n = r.nutrition -%}
+<div class="nutrition">
+  <span class="tape tape-butter"></span>
+  <div class="nutri-cal">
+    <b>{{ num(n.calories) }}</b><span>kcal<br>per serving</span>
+  </div>
+  <div class="nutri-macros">
+    <span class="macro macro-p"><i>Protein</i>{{ num(n.protein_g) }}g</span>
+    <span class="macro macro-c"><i>Carbs</i>{{ num(n.carbs_g) }}g</span>
+    <span class="macro macro-f"><i>Fat</i>{{ num(n.fat_g) }}g</span>
+    {% if n.fiber_g is not none %}<span class="macro"><i>Fiber</i>{{ num(n.fiber_g) }}g</span>{% endif %}
+    {% if n.sugar_g is not none %}<span class="macro"><i>Sugar</i>{{ num(n.sugar_g) }}g</span>{% endif %}
+    {% if n.sodium_mg is not none %}<span class="macro"><i>Sodium</i>{{ num(n.sodium_mg) }}mg</span>{% endif %}
+  </div>
+  <div class="nutri-note">✨ AI estimate — approximate</div>
+</div>
+{%- endmacro -%}
 {%- macro recipe_card(r) -%}
 <section class="recipe" id="{{ r.id }}">
   <header class="recipe-head">
@@ -36,15 +56,17 @@
   </header>
   <div class="recipe-body">
     <aside class="ingredients">
-      <h2>Ingredients</h2>
+      <span class="tape"></span>
+      <h2>🧺 Ingredients</h2>
       <ul>
         {% for ing in r.ingredients %}
         <li>{% if ing.amount_display %}<span class="qty">{{ ing.amount_display }}</span> {% endif %}{{ ing.text_display }}</li>
         {% endfor %}
       </ul>
     </aside>
+    {% if r.nutrition %}{{ nutrition_card(r) }}{% endif %}
     <div class="steps">
-      <h2>Method</h2>
+      <h2>🍳 Method</h2>
       <ol>
         {% for step in r.instructions %}
         <li>{{ step }}</li>
@@ -73,11 +95,17 @@
   <!-- COVER ------------------------------------------------------------------>
   <section class="cover">
     <div class="cover-inner">
-      <div class="cover-emblem">🍔</div>
+      {% if logo_data_uri %}
+      <div class="cover-logo">
+        <span class="tape cover-tape-l"></span>
+        <span class="tape tape-sage cover-tape-r"></span>
+        <img src="{{ logo_data_uri }}" alt="Chefsprint">
+      </div>
+      {% endif %}
       <h1 class="cover-title">{{ cookbook.title }}</h1>
       {% if cookbook.subtitle %}<p class="cover-sub">{{ cookbook.subtitle }}</p>{% endif %}
       <div class="doodle-rule"></div>
-      <p class="cover-tag">Made by Chefsprint</p>
+      <p class="cover-tag">Made with Chefsprint</p>
       <p class="cover-meta">{{ date_str }} &middot; {{ cookbook.recipes | length }} recipe{{ 's' if cookbook.recipes | length != 1 }}</p>
     </div>
   </section>
@@ -114,7 +142,7 @@
       </div>
       {% endfor %}
     </div>
-    <p class="colophon">Made with ❤️ with Chefsprint</p>
+    <p class="colophon">Made with &#10084;&#65039; by Chefsprint</p>
   </section>
 
   <script>window.PagedConfig = { auto: true, after: () => { window.__pagedReady = true; } };</script>

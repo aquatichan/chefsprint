@@ -1,7 +1,7 @@
 /* ============================================================================
-   Chefsprint — "Doodle Cream" theme
-   stylish minimalist × hand-drawn doodle × soft skeuomorphism, on cream.
-   Shared design tokens are mirrored in the Next.js Tailwind config.
+   Chefsprint — "Doodle Kitchen" cookbook theme
+   Hand-drawn recipe-binder look in print: graph-paper pages, washi tape,
+   sticker chips, wobbly ink cards. Mirrors the web app's design system.
    ============================================================================ */
 
 @import url('https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Nunito:wght@400;500;600;700&display=swap');
@@ -13,16 +13,16 @@
   --ink-soft:  #6F655C;
   --accent:    #C56B4A;   /* terracotta */
   --accent-2:  #7C8A5A;   /* sage       */
+  --butter:    #F0B429;   /* golden     */
+  --berry:     #B0476B;   /* jam        */
   --line:      #E7DECF;
-  --shadow:    rgba(59, 52, 46, 0.14);
+  --shadow:    rgba(59, 52, 46, 0.16);
 
   --font-display: 'Fraunces', Georgia, serif;
   --font-hand:    'Caveat', 'Segoe Script', cursive;
   --font-body:    'Nunito', system-ui, -apple-system, sans-serif;
 
-  /* hand-drawn wobbly underline (terracotta) */
   --doodle-underline: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 12'><path d='M2 6 Q17 9 32 6 T62 6 T92 6 T122 6 T152 6 T182 6 T212 6 T238 6' fill='none' stroke='%23C56B4A' stroke-width='2.4' stroke-linecap='round'/></svg>");
-  /* sketchy divider (sage) */
   --doodle-divider: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 16'><path d='M2 6 Q17 3 32 6 T62 6 T92 6 T122 6 T152 6 T182 6 T212 6 T238 6' fill='none' stroke='%237C8A5A' stroke-width='2.4' stroke-linecap='round'/></svg>");
 }
 
@@ -30,7 +30,9 @@
 @page {
   size: 6in 9in;
   margin: 16mm 15mm 18mm;
-  background: var(--cream);
+  /* No `background` here on purpose: Paged.js would translate it into a
+     `.pagedjs_page { background: ... }` shorthand that wipes our grid image.
+     The page tint + grid are set on .pagedjs_page below instead. */
   @bottom-center {
     content: counter(page);
     font-family: var(--font-hand);
@@ -46,6 +48,18 @@
 }
 @page cover      { margin: 0; @bottom-center { content: none; } @top-center { content: none; } }
 @page frontmatter{ @top-center { content: none; } }
+
+/* DIY graph-paper grid on every rendered page (behind the content). !important
+   beats the rule Paged.js generates for .pagedjs_page. */
+.pagedjs_page {
+  background-color: var(--cream) !important;
+  background-image:
+    linear-gradient(rgba(59, 52, 46, 0.06) 0.35mm, transparent 0.35mm),
+    linear-gradient(90deg, rgba(59, 52, 46, 0.06) 0.35mm, transparent 0.35mm),
+    radial-gradient(rgba(197, 107, 74, 0.09) 0.5mm, transparent 0.5mm) !important;
+  background-size: 5.5mm 5.5mm, 5.5mm 5.5mm, 5.5mm 5.5mm !important;
+  background-position: 0 0, 0 0, 2.75mm 2.75mm !important;
+}
 
 /* ------------------------------------------------------------------- base */
 * { box-sizing: border-box; }
@@ -69,6 +83,36 @@ a { color: inherit; text-decoration: none; }
   margin: 14px 0;
 }
 
+/* ---------------------------------------------------- washi tape component */
+.tape {
+  position: absolute;
+  width: 22mm;
+  height: 7mm;
+  background: repeating-linear-gradient(
+    45deg,
+    rgba(240, 180, 41, 0.5) 0 2mm,
+    rgba(240, 180, 41, 0.28) 2mm 4mm
+  );
+  border-left: 0.4mm dashed rgba(59, 52, 46, 0.16);
+  border-right: 0.4mm dashed rgba(59, 52, 46, 0.16);
+  transform: rotate(-4deg);
+  z-index: 3;
+}
+.tape-sage {
+  background: repeating-linear-gradient(
+    45deg,
+    rgba(124, 138, 90, 0.46) 0 2mm,
+    rgba(124, 138, 90, 0.26) 2mm 4mm
+  );
+}
+.tape-butter {
+  background: repeating-linear-gradient(
+    45deg,
+    rgba(240, 180, 41, 0.55) 0 2mm,
+    rgba(240, 180, 41, 0.3) 2mm 4mm
+  );
+}
+
 /* ------------------------------------------------------------------- cover */
 .cover {
   page: cover;
@@ -86,11 +130,28 @@ a { color: inherit; text-decoration: none; }
   content: "";
   position: absolute;
   inset: 12mm;
-  border: 2.5px solid var(--line);
-  border-radius: 14px;
+  border: 0.7mm solid var(--line);
+  border-radius: 16px 14px 18px 12px;
 }
 .cover-inner { position: relative; padding: 0 16mm; }
-.cover-emblem { font-size: 40pt; line-height: 1; margin-bottom: 6mm; }
+
+/* Logo set in a rounded dark tile (echoes the web hero), pinned with tape. */
+.cover-logo {
+  position: relative;
+  width: 40mm;
+  height: 40mm;
+  margin: 0 auto 8mm;
+  background: var(--ink);
+  border-radius: 11mm 10mm 12mm 9mm;
+  box-shadow: 1.6mm 2mm 0 var(--shadow);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cover-logo img { width: 30mm; height: 30mm; display: block; }
+.cover-tape-l { top: -3.5mm; left: 4mm; transform: rotate(-8deg); }
+.cover-tape-r { top: -3.5mm; right: 4mm; transform: rotate(7deg); }
+
 .cover-title {
   font-size: 40pt;
   font-weight: 700;
@@ -149,15 +210,19 @@ a { color: inherit; text-decoration: none; }
 /* ------------------------------------------------------------------ recipe */
 .recipe { break-before: page; }
 .recipe-head { margin-bottom: 4mm; break-after: avoid; }
+
+/* Category as a hand-stuck sticker */
 .cat-chip {
   display: inline-block;
   font-family: var(--font-hand);
-  font-size: 12pt;
+  font-weight: 700;
+  font-size: 13pt;
   color: #fff;
-  background: var(--accent-2);
-  padding: 1px 12px;
+  background: var(--berry);
+  padding: 0.5mm 4mm;
   border-radius: 999px;
-  transform: rotate(-1.5deg);
+  transform: rotate(-2deg);
+  box-shadow: 0.6mm 0.8mm 0 var(--shadow);
   margin-bottom: 3mm;
 }
 .recipe-title {
@@ -176,9 +241,7 @@ a { color: inherit; text-decoration: none; }
 .meta span { display: inline-flex; align-items: center; }
 .meta svg { vertical-align: -2px; margin-right: 4px; }
 
-/* Dish art: AI-generated square photo beside the title, softly rounded, with
-   translucent doodle ornaments hugging its corners. The head block never
-   fragments (break-after: avoid on .recipe-head), so this flex row is safe. */
+/* Dish art: square photo beside the title with doodle ornaments. */
 .head-row { display: flex; gap: 7mm; align-items: flex-start; justify-content: space-between; }
 .head-text { flex: 1; min-width: 0; }
 .dish-art { position: relative; flex: 0 0 34mm; margin-top: 1mm; }
@@ -186,28 +249,31 @@ a { color: inherit; text-decoration: none; }
   width: 34mm;
   height: 34mm;
   object-fit: cover;
-  border-radius: 7mm;
-  border: 2px solid var(--line);
-  box-shadow: 3px 4px 0 var(--shadow);
+  border-radius: 8mm 7mm 9mm 6mm;
+  border: 0.6mm solid var(--ink);
+  box-shadow: 1mm 1.3mm 0 var(--shadow);
   display: block;
 }
 .dish-art .orn { position: absolute; opacity: 0.45; }
 .dish-art .orn-flower { top: -4.5mm; left: -5mm; transform: rotate(-14deg); }
 .dish-art .orn-utensils { bottom: -4mm; right: -4.5mm; transform: rotate(10deg); }
 
-/* Stacked block layout: a full-width ingredients card (two-column list to stay
-   compact) followed by the method. This is the layout Paged.js fragments most
-   reliably — flex rows get pushed wholesale (wasted pages) and floats spill
-   slivers onto blank pages. */
+/* Stacked block layout, most reliable for Paged.js fragmentation. */
 .recipe-body { margin-top: 5mm; }
-.ingredients {
+
+/* Shared hand-drawn card look (ink outline, uneven radius, hard shadow). */
+.ingredients, .nutrition, .notes {
+  position: relative;
   background: var(--paper);
-  border: 1.5px solid var(--line);
-  border-radius: 12px;
+  border: 0.5mm solid var(--ink);
+  box-shadow: 1.2mm 1.5mm 0 var(--shadow);
+}
+.ingredients {
+  border-radius: 14px 12px 15px 11px;
   padding: 4.5mm 6mm;
-  box-shadow: 3px 4px 0 var(--shadow);
   margin-bottom: 6mm;
 }
+.ingredients .tape { top: -3.5mm; left: 10mm; }
 .ingredients h2, .steps h2 {
   font-size: 15pt;
   margin: 0 0 2.5mm;
@@ -229,8 +295,67 @@ a { color: inherit; text-decoration: none; }
   background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'><path d='M3 11 l5 5 l9 -13' fill='none' stroke='%23C56B4A' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/></svg>") center / contain no-repeat;
 }
 .ingredients .qty { font-weight: 700; }
-/* Use the native list-item counter (not a custom one): Paged.js continues it
-   correctly when a step list is fragmented across a page break. */
+
+/* --------------------------------------------------------------- nutrition */
+.nutrition {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4mm;
+  border-radius: 13px 15px 11px 14px;
+  padding: 4mm 5.5mm;
+  margin-bottom: 6mm;
+  break-inside: avoid;
+}
+.nutrition .tape { top: -3.5mm; right: 12mm; transform: rotate(5deg); }
+.nutri-cal {
+  flex: 0 0 auto;
+  text-align: center;
+  padding-right: 4.5mm;
+  border-right: 0.4mm dashed var(--line);
+}
+.nutri-cal b {
+  display: block;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 25pt;
+  line-height: 0.95;
+  color: var(--accent);
+}
+.nutri-cal span { font-size: 7.5pt; line-height: 1.15; color: var(--ink-soft); display: inline-block; margin-top: 1mm; }
+.nutri-macros { display: flex; flex-wrap: wrap; gap: 2mm 2.5mm; flex: 1; }
+.macro {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  font-weight: 700;
+  font-size: 11.5pt;
+  color: var(--ink);
+  background: var(--cream);
+  border: 0.3mm solid var(--line);
+  border-radius: 7px;
+  padding: 0.8mm 2.8mm;
+}
+.macro i {
+  font-style: normal;
+  font-weight: 700;
+  font-size: 6.5pt;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.macro-p { background: rgba(124, 138, 90, 0.16); border-color: rgba(124, 138, 90, 0.3); }
+.macro-c { background: rgba(240, 180, 41, 0.18); border-color: rgba(240, 180, 41, 0.35); }
+.macro-f { background: rgba(197, 107, 74, 0.13); border-color: rgba(197, 107, 74, 0.3); }
+.nutri-note {
+  flex-basis: 100%;
+  text-align: right;
+  font-family: var(--font-hand);
+  font-size: 11pt;
+  color: var(--ink-soft);
+}
+
+/* ------------------------------------------------------------------- steps */
 .steps ol { margin: 0; padding: 0; list-style: none; }
 .steps li {
   position: relative;
@@ -247,14 +372,15 @@ a { color: inherit; text-decoration: none; }
   font-weight: 700; font-size: 14pt;
   color: #fff; background: var(--accent);
   border-radius: 50%;
+  box-shadow: 0.5mm 0.7mm 0 var(--shadow);
   transform: rotate(-3deg);
 }
 
 .notes {
   margin-top: 5mm;
   background: #FBF3E7;
-  border-left: 4px solid var(--accent-2);
-  border-radius: 8px;
+  border-radius: 12px 10px 13px 11px;
+  border-left: 1.2mm solid var(--accent-2);
   padding: 4mm 5mm;
   break-inside: avoid;
 }
@@ -262,16 +388,10 @@ a { color: inherit; text-decoration: none; }
 .notes p { margin: 0 0 1.5mm; }
 
 /* ------------------------------------------------------------------- index */
-/* One column, page order. Recipe titles left-aligned, page numbers pinned right,
-   chunky dot leaders between; each entry carries its source attribution below. */
 .index-entries { margin-top: 2mm; }
 .index-item { break-inside: avoid; padding: 2mm 0; border-bottom: 1px dashed var(--line); }
 .index-item:last-child { border-bottom: none; }
-.index-entry {
-  display: flex;
-  align-items: flex-end;
-  gap: 8px;
-}
+.index-entry { display: flex; align-items: flex-end; gap: 8px; }
 .index-entry .t { font-size: 11pt; font-weight: 600; text-align: left; }
 .index-entry .dots {
   flex: 1;

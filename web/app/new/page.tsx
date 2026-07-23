@@ -14,6 +14,7 @@ type Status = "idle" | "running" | "done" | "error";
 const STAGE_HEADER: Record<string, string> = {
   search: "🔎 Searching",
   scale: "⚖️ Scaling",
+  nutrition: "🥗 Counting nutrition",
   art: "🎨 Illustrating",
   build: "📖 Building",
 };
@@ -44,6 +45,14 @@ function ProgressLine({ ev }: { ev: JobEvent }) {
         <span>
           {ev.title} → <b>{ev.servings}</b> servings
         </span>
+      </div>
+    );
+  }
+  if (ev.stage === "nutrition") {
+    return (
+      <div className="animate-pop flex items-start gap-2 text-ink">
+        <span className="text-accent">✓</span>
+        <span>{ev.title}</span>
       </div>
     );
   }

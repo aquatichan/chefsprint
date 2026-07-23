@@ -14,6 +14,7 @@ from .models import Cookbook, Recipe
 from .pipeline.categorize import categorize
 from .pipeline.images import fetch_recipe_art
 from .pipeline.modify import apply_modifications
+from .pipeline.nutrition import estimate_nutrition
 from .pipeline.scale import scale_recipe
 from .pipeline.scrape import scrape_recipe
 from .pipeline.search import search_recipe_urls
@@ -110,6 +111,12 @@ def build_cookbook(
         recipes.append(recipe)
         emit({"stage": "scale", "ok": True, "title": recipe.title,
               "servings": recipe.servings})
+
+    # Phase 2b — per-serving nutrition (AI-only; estimated from final ingredients).
+    for recipe in recipes:
+        recipe.nutrition = estimate_nutrition(recipe, use_ai=use_ai)
+        if recipe.nutrition:
+            emit({"stage": "nutrition", "ok": True, "title": recipe.title})
 
     # Phase 3 — dish art (AI-generated square photo, scraped-photo fallback).
     for recipe in recipes:
