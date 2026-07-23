@@ -10,7 +10,12 @@ export default function Header() {
     <header className="border-b-2 border-dashed border-line bg-cream/85 backdrop-blur sticky top-0 z-20">
       <div className="mx-auto max-w-5xl px-5 h-16 flex items-center justify-between">
         <Link href="/" className="group flex items-center gap-2 text-ink">
-          <span className="text-2xl hover-jiggle">🍔</span>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/chefsprint-logo.png"
+            alt="Chefsprint"
+            className="h-9 w-9 hover-jiggle drop-shadow-[1px_1px_0_rgba(59,52,46,0.18)]"
+          />
           <span className="font-display text-xl font-semibold group-hover:text-accent transition-colors">
             Chefsprint
           </span>
@@ -25,12 +30,20 @@ export default function Header() {
                 Explore
               </Link>
               {user && (
-                <Link
-                  href="/dashboard"
-                  className="rounded-full px-2.5 py-1.5 text-ink-soft hover:bg-sage/10 hover:text-sage transition-colors"
-                >
-                  Dashboard
-                </Link>
+                <>
+                  <Link
+                    href="/dashboard"
+                    className="rounded-full px-2.5 py-1.5 text-ink-soft hover:bg-sage/10 hover:text-sage transition-colors"
+                  >
+                    Dashboard
+                  </Link>
+                  <Link
+                    href="/credits"
+                    className="hidden sm:inline rounded-full px-2.5 py-1.5 text-ink-soft hover:bg-butter/15 hover:text-[#a97a12] transition-colors"
+                  >
+                    Credits
+                  </Link>
+                </>
               )}
             </>
           )}

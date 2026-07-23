@@ -30,13 +30,17 @@ html {
   background: var(--color-cream);
 }
 body {
-  background: var(--color-cream);
+  background-color: var(--color-cream);
   color: var(--color-ink);
   font-family: var(--font-sans);
-  /* Subtle paper grain + a faint dotted "cork board" so surfaces feel tactile */
+  /* DIY graph-paper: faint ruled grid + a dot at each intersection so every
+     page reads like a page torn from a recipe notebook (and never feels empty). */
   background-image:
-    radial-gradient(rgba(59, 52, 46, 0.035) 1px, transparent 1px);
-  background-size: 22px 22px;
+    linear-gradient(rgba(59, 52, 46, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(59, 52, 46, 0.045) 1px, transparent 1px),
+    radial-gradient(rgba(197, 107, 74, 0.06) 1.5px, transparent 1.5px);
+  background-size: 28px 28px, 28px 28px, 28px 28px;
+  background-position: -1px -1px, -1px -1px, 13px 13px;
 }
 
 /* ---------------------------------------------------------------- underlines */
@@ -198,6 +202,28 @@ body {
 }
 .draw-underline::after { animation: draw-underline 0.7s ease-out 0.2s both; }
 
+/* Generic pressable feedback for links/cards that aren't .btn-doodle */
+.pressable { transition: transform 0.12s ease; }
+.pressable:active { transform: scale(0.97); }
+
+/* Little pop when a star is toggled on */
+@keyframes star-pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.5) rotate(12deg); }
+  100% { transform: scale(1); }
+}
+.star-pop { animation: star-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+
+/* Underline that draws itself in on hover (nav / inline links) */
+.link-wobble {
+  background-image: linear-gradient(var(--color-accent), var(--color-accent));
+  background-position: 0 100%;
+  background-repeat: no-repeat;
+  background-size: 0% 2px;
+  transition: background-size 0.25s ease;
+}
+.link-wobble:hover { background-size: 100% 2px; }
+
 /* Staggered entrance utility (pair with inline animation-delay) */
 .stagger { opacity: 0; animation: pop-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
 
@@ -231,8 +257,10 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .hero-rays, .hero-settle, .jiggle, .bob, .steam,
-  .hover-jiggle:hover, .draw-underline::after, .stagger, .animate-pop {
+  .hover-jiggle:hover, .draw-underline::after, .stagger, .animate-pop,
+  .star-pop {
     animation: none;
   }
   .doodle-card:hover { transform: none; }
+  .stagger { opacity: 1; }
 }

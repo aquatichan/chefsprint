@@ -9,6 +9,7 @@ import {
   doc,
   getDoc,
   setDoc,
+  updateDoc,
   deleteDoc,
   addDoc,
   collection,
@@ -19,6 +20,7 @@ import {
   getDocs,
   getCountFromServer,
   serverTimestamp,
+  increment,
   type Firestore,
 } from "firebase/firestore";
 import { firebaseEnabled, auth, type User } from "./firebase";
@@ -45,7 +47,20 @@ export interface CookbookDoc {
   public?: boolean;
   pdfUrl?: string;
   htmlUrl?: string;
+  /** Owner-chosen display glyph (any single char); falls back to 📖. */
+  icon?: string;
+  /** Denormalized star tally, kept live by toggleStar for leaderboards. */
+  starCount?: number;
   updatedAt?: { seconds: number } | null;
+}
+
+export interface ProfileLinks {
+  website?: string;
+  instagram?: string;
+  x?: string;
+  youtube?: string;
+  tiktok?: string;
+  github?: string;
 }
 
 export interface ProfileDoc {
@@ -54,8 +69,10 @@ export interface ProfileDoc {
   handle?: string;
   photoURL?: string;
   bio?: string;
+  links?: ProfileLinks;
   aiCredits?: number;
   plan?: string;
+  createdAt?: { seconds: number } | null;
   /** Grants access to /admin. Settable only via the Firebase console (Admin-SDK-only field). */
   isAdmin?: boolean;
 }
@@ -66,16 +83,21 @@ export interface ProfileDoc {
 export async function ensureProfile(user: User): Promise<void> {
   const d = db();
   if (!d) return;
+  const ref = doc(d, "users", user.uid);
+  const existing = await getDoc(ref);
   const handle = (user.email?.split("@")[0] ?? user.uid.slice(0, 8))
     .toLowerCase()
     .replace(/[^a-z0-9_]/g, "");
   await setDoc(
-    doc(d, "users", user.uid),
+    ref,
     {
       displayName: user.displayName ?? handle,
       nameLower: (user.displayName ?? handle).toLowerCase(),
       handle,
       photoURL: user.photoURL ?? null,
+      // Stamp createdAt once, and backfill it for legacy docs that predate the
+      // field, so "Recent chefs" and the profile "Joined" date work for them.
+      ...(existing.data()?.createdAt ? {} : { createdAt: serverTimestamp() }),
     },
     { merge: true },
   );
@@ -86,6 +108,29 @@ export async function getProfile(uid: string): Promise<ProfileDoc | null> {
   if (!d) return null;
   const snap = await getDoc(doc(d, "users", uid));
   return snap.exists() ? ({ uid, ...snap.data() } as ProfileDoc) : null;
+}
+
+/** Update the caller's own editable profile fields (bio + social links). */
+export async function updateProfile(
+  uid: string,
+  patch: { bio?: string; links?: ProfileLinks },
+): Promise<void> {
+  const d = db();
+  if (!d) return;
+  // Drop empty link values so we don't store blanks.
+  const links = patch.links
+    ? Object.fromEntries(
+        Object.entries(patch.links).filter(([, v]) => v && v.trim()),
+      )
+    : undefined;
+  await setDoc(
+    doc(d, "users", uid),
+    {
+      ...(patch.bio !== undefined ? { bio: patch.bio.trim().slice(0, 280) } : {}),
+      ...(links !== undefined ? { links } : {}),
+    },
+    { merge: true },
+  );
 }
 
 /** Prefix search over handle and display name; merged + deduped. */
@@ -146,15 +191,21 @@ export async function starCount(cookbookId: string): Promise<number> {
   return agg.data().count;
 }
 
-/** Toggle a star; stars double as bookmarks under the user's own doc. */
+/** Toggle a star; stars double as bookmarks under the user's own doc, and keep
+ * the cookbook's denormalized `starCount` live for the discovery leaderboards. */
 export async function toggleStar(book: CookbookDoc): Promise<boolean> {
   const d = db();
   const me = auth()?.currentUser;
   if (!d || !me) return false;
   const starRef = doc(d, "cookbooks", book.id, "stars", me.uid);
   const bookmarkRef = doc(d, "users", me.uid, "bookmarks", book.id);
+  const cookbookRef = doc(d, "cookbooks", book.id);
   if ((await getDoc(starRef)).exists()) {
-    await Promise.all([deleteDoc(starRef), deleteDoc(bookmarkRef)]);
+    await Promise.all([
+      deleteDoc(starRef),
+      deleteDoc(bookmarkRef),
+      updateDoc(cookbookRef, { starCount: increment(-1) }).catch(() => {}),
+    ]);
     return false;
   }
   const stamp = { createdAt: serverTimestamp() };
@@ -166,8 +217,21 @@ export async function toggleStar(book: CookbookDoc): Promise<boolean> {
       ownerUid: book.uid,
       description: book.description ?? "",
     }),
+    updateDoc(cookbookRef, { starCount: increment(1) }).catch(() => {}),
   ]);
   return true;
+}
+
+/** Owner-only: set a custom display glyph for a cookbook (any single char). */
+export async function setCookbookIcon(
+  cookbookId: string,
+  icon: string,
+): Promise<void> {
+  const d = db();
+  if (!d) return;
+  await updateDoc(doc(d, "cookbooks", cookbookId), {
+    icon: [...icon.trim()][0] ?? "",
+  });
 }
 
 export interface BookmarkDoc {
@@ -218,4 +282,80 @@ export async function addComment(cookbookId: string, text: string): Promise<void
     text: text.trim().slice(0, 1000),
     createdAt: serverTimestamp(),
   });
+}
+
+// ---------------------------------------------------------------- discovery
+
+export interface ChefStat extends ProfileDoc {
+  stars: number;
+  books: number;
+}
+
+export interface Discovery {
+  popularCookbooks: CookbookDoc[];
+  recentCookbooks: CookbookDoc[];
+  popularChefs: ChefStat[];
+  recentChefs: ProfileDoc[];
+}
+
+/**
+ * Everything the Find-chefs page shows below the search bar. Derived from a
+ * single public-cookbook read (sorted client-side, so no composite indexes are
+ * needed) plus a recent-users query. Popular chefs are ranked by the summed
+ * stars across their public cookbooks.
+ */
+export async function getDiscovery(): Promise<Discovery> {
+  const empty: Discovery = {
+    popularCookbooks: [],
+    recentCookbooks: [],
+    popularChefs: [],
+    recentChefs: [],
+  };
+  const d = db();
+  if (!d) return empty;
+
+  const snap = await getDocs(
+    query(collection(d, "cookbooks"), where("public", "==", true), limit(200)),
+  );
+  const books = snap.docs.map((s) => ({ id: s.id, ...s.data() }) as CookbookDoc);
+
+  const popularCookbooks = [...books]
+    .sort((a, b) => (b.starCount ?? 0) - (a.starCount ?? 0))
+    .slice(0, 10);
+  const recentCookbooks = [...books]
+    .sort((a, b) => (b.updatedAt?.seconds ?? 0) - (a.updatedAt?.seconds ?? 0))
+    .slice(0, 10);
+
+  // Cumulative stars per chef, across their public cookbooks.
+  const agg = new Map<string, { stars: number; books: number }>();
+  for (const b of books) {
+    const cur = agg.get(b.uid) ?? { stars: 0, books: 0 };
+    cur.stars += b.starCount ?? 0;
+    cur.books += 1;
+    agg.set(b.uid, cur);
+  }
+  const topOwners = [...agg.entries()]
+    .sort((a, b) => b[1].stars - a[1].stars || b[1].books - a[1].books)
+    .slice(0, 10);
+  const chefs = await Promise.all(
+    topOwners.map(async ([uid, stat]) => {
+      const p = await getProfile(uid);
+      return p ? ({ ...p, stars: stat.stars, books: stat.books } as ChefStat) : null;
+    }),
+  );
+  const popularChefs = chefs.filter((c): c is ChefStat => c !== null);
+
+  // Newest accounts (single-field orderBy is auto-indexed). Legacy docs without
+  // createdAt simply don't appear here.
+  let recentChefs: ProfileDoc[] = [];
+  try {
+    const us = await getDocs(
+      query(collection(d, "users"), orderBy("createdAt", "desc"), limit(10)),
+    );
+    recentChefs = us.docs.map((s) => ({ uid: s.id, ...s.data() }) as ProfileDoc);
+  } catch {
+    /* createdAt index/field may be absent on a fresh project */
+  }
+
+  return { popularCookbooks, recentCookbooks, popularChefs, recentChefs };
 }

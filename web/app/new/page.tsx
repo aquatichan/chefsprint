@@ -95,12 +95,14 @@ function NewCookbookInner() {
     );
   }, [user]);
 
-  // Remix: preload the original cookbook's requests + title for editing.
+  // Remix: preload the original cookbook's requests + title for editing. Older
+  // cookbooks may predate the stored `requests`, so fall back to recipe titles.
   useEffect(() => {
     if (!remixId) return;
     getCookbook(remixId).then((book) => {
       if (!book) return;
-      if (book.requests?.length) setText(book.requests.join("\n"));
+      const lines = book.requests?.length ? book.requests : book.recipeTitles;
+      if (lines?.length) setText(lines.join("\n"));
       if (book.title) setTitle(book.title);
       setRemixOwned(Boolean(user && book.uid === user.uid));
     });

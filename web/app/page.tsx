@@ -1,5 +1,6 @@
 import Link from "next/link";
 import HeroLogo from "./components/HeroLogo";
+import FloatingKitchen from "./components/FloatingKitchen";
 
 const EXAMPLES = [
   { emoji: "🍕", text: "meat lovers pizza that serves four people" },
@@ -32,32 +33,14 @@ const STEPS = [
   },
 ];
 
-// Floating kitchen doodles scattered behind the hero.
-const FLOATERS = [
-  { e: "🥕", cls: "left-[6%] top-[18%]", delay: "0s" },
-  { e: "🧄", cls: "right-[8%] top-[12%]", delay: "0.8s" },
-  { e: "🥄", cls: "left-[12%] bottom-[8%]", delay: "1.4s" },
-  { e: "🌿", cls: "right-[10%] bottom-[14%]", delay: "0.4s" },
-  { e: "🧅", cls: "left-[42%] top-[4%]", delay: "1.1s" },
-];
-
 export default function Home() {
   return (
-    <div className="mx-auto max-w-5xl px-5">
+    <div className="relative z-10 mx-auto max-w-5xl px-5">
+      {/* Ambient roaming kitchen emojis (canvas layer behind the content) */}
+      <FloatingKitchen />
+
       {/* Hero */}
       <section className="relative pt-16 pb-16 text-center">
-        {/* Ambient floating kitchen bits */}
-        {FLOATERS.map((f, i) => (
-          <span
-            key={i}
-            aria-hidden
-            className={`bob pointer-events-none absolute hidden text-3xl opacity-70 sm:block ${f.cls}`}
-            style={{ animationDelay: f.delay }}
-          >
-            {f.e}
-          </span>
-        ))}
-
         <HeroLogo />
 
         <h1 className="mt-4 font-display text-5xl sm:text-7xl font-bold tracking-tight text-ink text-balance">

@@ -25,11 +25,25 @@ service cloud.firestore {
       }
     }
 
-    // --- Cookbooks (written only by the engine) --------------------------------
+    // --- Cookbooks (created only by the engine) --------------------------------
     match /cookbooks/{cookbookId} {
       allow read: if resource.data.public == true
         || (signedIn() && resource.data.uid == request.auth.uid);
-      allow write: if false;
+      allow create, delete: if false; // engine (Admin SDK) owns these
+
+      // Two narrow client updates are allowed:
+      //  1. the owner may set a custom display icon;
+      //  2. any signed-in user may nudge the star tally by exactly ±1 (kept in
+      //     sync with the stars subcollection by toggleStar).
+      allow update: if signedIn() && (
+        (resource.data.uid == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['icon']))
+        ||
+        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['starCount'])
+          && request.resource.data.starCount is int
+          && (request.resource.data.starCount == resource.data.get('starCount', 0) + 1
+            || request.resource.data.starCount == resource.data.get('starCount', 0) - 1))
+      );
 
       match /stars/{starUid} {
         allow read: if true;

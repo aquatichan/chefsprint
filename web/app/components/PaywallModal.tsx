@@ -1,15 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import {
-  CASHTAG,
-  cashAppLink,
-  CREDIT_PACKS,
-  FREE_AI_GENERATIONS,
-  PRO_FEATURES,
-  type CreditPack,
-} from "@/lib/billing";
+import { useEffect } from "react";
+import { FREE_AI_GENERATIONS, PRO_FEATURES } from "@/lib/billing";
 import { useAuth } from "@/lib/useAuth";
+import CreditPackPicker from "./CreditPackPicker";
 
 /**
  * Hard paywall shown when a user is out of free AI generations.
@@ -28,7 +22,6 @@ export default function PaywallModal({
   onContinueWithoutAi?: () => void;
 }) {
   const { user } = useAuth();
-  const [selected, setSelected] = useState<CreditPack["id"]>("medium");
 
   useEffect(() => {
     if (!open) return;
@@ -38,8 +31,6 @@ export default function PaywallModal({
   }, [open, onClose]);
 
   if (!open) return null;
-
-  const pack = CREDIT_PACKS.find((p) => p.id === selected)!;
 
   return (
     <div
@@ -86,56 +77,9 @@ export default function PaywallModal({
           ))}
         </ul>
 
-        {/* Pack picker */}
-        <div className="mt-5 grid gap-3 sm:grid-cols-3">
-          {CREDIT_PACKS.map((p) => (
-            <button
-              key={p.id}
-              onClick={() => setSelected(p.id)}
-              className={`relative rounded-2xl border-2 p-4 text-left transition-all ${
-                selected === p.id
-                  ? "-translate-y-0.5 border-accent bg-accent/5 shadow-[3px_3px_0_rgba(59,52,46,0.14)]"
-                  : "border-line hover:border-accent/50"
-              }`}
-            >
-              {p.badge && (
-                <span className="sticker absolute -top-3 right-2 bg-berry text-[11px]">
-                  {p.badge}
-                </span>
-              )}
-              <div className="font-semibold text-ink">{p.name}</div>
-              <div className="mt-1">
-                <span className="font-display text-2xl font-bold text-ink tabular-nums">
-                  ${p.price}
-                </span>
-              </div>
-              <div className="text-xs text-ink-soft tabular-nums">
-                {p.credits} credits
-              </div>
-            </button>
-          ))}
+        <div className="mt-5">
+          <CreditPackPicker email={user?.email} />
         </div>
-
-        <div className="mt-5 rounded-xl border-2 border-dashed border-line bg-cream/70 p-4 text-sm text-ink">
-          <p className="font-semibold">📮 Before you pay:</p>
-          <p className="mt-1 text-ink-soft">
-            Payments are matched to your account by hand - send to{" "}
-            <b className="text-ink">{CASHTAG}</b> and put{" "}
-            <b className="text-ink">
-              {user?.email ?? "the email you signed in with"}
-            </b>{" "}
-            in the Cash App note. Credits are usually added within a day.
-          </p>
-        </div>
-
-        <a
-          href={cashAppLink(pack)}
-          target="_blank"
-          rel="noreferrer"
-          className="btn-doodle mt-4 w-full px-6 py-3 text-lg"
-        >
-          Pay ${pack.price} via Cash App →
-        </a>
 
         {onContinueWithoutAi && (
           <button
