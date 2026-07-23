@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, Suspense, useEffect, useState } from "react";
+import { Fragment, Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { apiUrl, streamJob, JobError, type JobEvent } from "@/lib/api";
 import { FREE_AI_GENERATIONS } from "@/lib/billing";
@@ -14,7 +14,7 @@ type Status = "idle" | "running" | "done" | "error";
 const STAGE_HEADER: Record<string, string> = {
   search: "🔎 Searching",
   scale: "⚖️ Scaling",
-  nutrition: "🥗 Counting nutrition",
+  nutrition: "🥗 Calculating nutrition",
   art: "🎨 Illustrating",
   build: "📖 Building",
 };
@@ -82,10 +82,35 @@ function NewCookbookInner() {
   const params = useSearchParams();
   const remixId = params.get("remix");
 
-  const [text, setText] = useState(
-    "brownies (regular + extra fudge)\nchicken tikka masala (no peanuts, I have a peanut allergy)\nfluffy pancakes that serves 4",
-  );
+  // One paragraph box per dish - each entry is exactly one recipe request, so
+  // a user can write several sentences about a single dish (servings, diets,
+  // allergies...) without it being sliced into extra "Untitled Recipe"s.
+  const [dishes, setDishes] = useState<string[]>([
+    ""
+  ]);
   const [title, setTitle] = useState("");
+  const dishRefs = useRef<(HTMLTextAreaElement | null)[]>([]);
+  const [focusIndex, setFocusIndex] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (focusIndex === null) return;
+    dishRefs.current[focusIndex]?.focus();
+    setFocusIndex(null);
+  }, [focusIndex]);
+
+  function updateDish(i: number, value: string) {
+    setDishes((prev) => prev.map((d, idx) => (idx === i ? value : d)));
+  }
+  function addDish() {
+    setDishes((prev) => {
+      const next = [...prev, ""];
+      setFocusIndex(next.length - 1);
+      return next;
+    });
+  }
+  function removeDish(i: number) {
+    setDishes((prev) => (prev.length > 1 ? prev.filter((_, idx) => idx !== i) : prev));
+  }
   const [useAi, setUseAi] = useState(true);
   const [remixOwned, setRemixOwned] = useState(false);
   const [saveMode, setSaveMode] = useState<"new" | "replace">("new");
@@ -111,15 +136,16 @@ function NewCookbookInner() {
     getCookbook(remixId).then((book) => {
       if (!book) return;
       const lines = book.requests?.length ? book.requests : book.recipeTitles;
-      if (lines?.length) setText(lines.join("\n"));
+      if (lines?.length) setDishes(lines);
       if (book.title) setTitle(book.title);
       setRemixOwned(Boolean(user && book.uid === user.uid));
     });
   }, [remixId, user]);
 
-  const requests = text
-    .split("\n")
-    .map((s) => s.trim())
+  // Collapse each box's own line breaks into spaces - a dish description can
+  // span multiple sentences, but it's still one request to the engine.
+  const requests = dishes
+    .map((d) => d.replace(/\s+/g, " ").trim())
     .filter(Boolean);
   const running = status === "running";
   const needsSignIn = enabled && !user;
@@ -188,13 +214,13 @@ function NewCookbookInner() {
   return (
     <div className="mx-auto max-w-5xl px-5 py-10">
       <div className="flex items-center gap-3">
-        <span className="text-4xl bob">{remixId ? "🔄" : "🧑‍🍳"}</span>
+        <span className="text-4xl bob">{remixId ? "🔄" : "🧑🍳"}</span>
         <h1 className="font-display text-4xl font-bold text-ink doodle-underline draw-underline inline-block">
           {remixId ? "Remix cookbook" : "New cookbook"}
         </h1>
       </div>
       <p className="mt-3 font-script text-xl text-sage -rotate-1">
-        One request per line — servings, diets, or allergies, all in plain English.
+        One box per dish - describe servings, diets, or allergies in plain English.
       </p>
 
       <div className="mt-8 grid gap-8 lg:grid-cols-2">
@@ -202,24 +228,56 @@ function NewCookbookInner() {
         <form onSubmit={onSubmit} className="doodle-card relative p-6 h-fit">
           <span className="tape -top-3 left-10 -rotate-3" aria-hidden />
           <label className="block font-script text-2xl text-sage">
-            📝 Your recipe requests
+            📝 Your recipes
           </label>
-          <textarea
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            rows={7}
+
+          {dishes.map((dish, i) => (
+            <div key={i} className="mt-3">
+              <div className="mb-1 flex items-center justify-between">
+                <span className="font-script text-base text-ink-soft">
+                  Dish {i + 1}
+                </span>
+                {dishes.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => removeDish(i)}
+                    disabled={running}
+                    aria-label={`Remove dish ${i + 1}`}
+                    className="rounded-full px-2 text-xs text-ink-soft transition-colors hover:text-accent-strong disabled:opacity-60"
+                  >
+                    ✕ remove
+                  </button>
+                )}
+              </div>
+              <textarea
+                ref={(el) => {
+                  dishRefs.current[i] = el;
+                }}
+                value={dish}
+                onChange={(e) => updateDish(i, e.target.value)}
+                rows={3}
+                disabled={running}
+                placeholder="e.g. chicken tikka masala, no peanuts, serves 4"
+                className="w-full resize-y rounded-xl border-2 border-line bg-cream/60 p-3 text-ink outline-none transition-colors focus:border-accent focus:bg-paper disabled:opacity-60"
+              />
+            </div>
+          ))}
+
+          <button
+            type="button"
+            onClick={addDish}
             disabled={running}
-            className="mt-2 w-full resize-y rounded-xl border-2 border-line bg-cream/60 p-3 text-ink outline-none transition-colors focus:border-accent focus:bg-paper disabled:opacity-60"
-          />
-          <div className="mt-1 text-right font-script text-lg text-ink-soft">
-            {requests.length} dish{requests.length === 1 ? "" : "es"} on the list
-          </div>
+            className="mt-3 w-full rounded-xl border-2 border-dashed border-line py-2.5 text-sm font-semibold text-ink-soft transition-colors hover:border-accent hover:text-accent disabled:opacity-60"
+          >
+            + Add recipe
+          </button>
+
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             disabled={running}
             placeholder="Cookbook title (optional)"
-            className="mt-2 w-full rounded-xl border-2 border-line bg-cream/60 p-3 text-ink outline-none transition-colors focus:border-accent focus:bg-paper disabled:opacity-60"
+            className="mt-4 w-full rounded-xl border-2 border-line bg-cream/60 p-3 text-ink outline-none transition-colors focus:border-accent focus:bg-paper disabled:opacity-60"
           />
 
           {/* AI toggle */}
